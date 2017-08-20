@@ -156,9 +156,12 @@ MainWindow::MainWindow(QWidget *parent) :
         std::exit(EXIT_FAILURE);
     }
 
+    // Read the default tube data file or ask for the file
     dataFileName = uTmaxDir;
     dataFileName.append("data.csv");
-    ReadDataFile();
+    if (!ReadDataFile())
+        std::exit(EXIT_FAILURE);
+
     calFileName = uTmaxDir;
     calFileName.append("cal.txt");
     ReadCalibration();
@@ -167,7 +170,6 @@ MainWindow::MainWindow(QWidget *parent) :
     adc_scale.Vs=(470000 + calData.RaVal)/calData.RaVal;
     SerialPortDiscovery();
 }
-
 
 MainWindow::~MainWindow()
 {
@@ -1508,16 +1510,21 @@ void MainWindow::SaveCalFile()
 
 //------------------------------------------------------
 // Tube Data file Management
-void MainWindow::ReadDataFile()
+bool MainWindow::ReadDataFile()
 {
     //Check to see if usual data file exists
     QFile datafile(dataFileName);
+    qDebug() << "Default dataFileName:" << dataFileName;
     if (! datafile.exists(dataFileName)) {
         //It doesn't exist so ask for it
-        dataFileName="";
+        dataFileName = QString();
         dataFileName = QFileDialog::getOpenFileName(this,tr("Read Tube Data file"),QDir::homePath(),"Text (*.csv)");
     }
-    if (dataFileName=="") QCoreApplication::quit();
+    if (dataFileName.isNull()) {
+        qDebug() << "ERROR: Valve database .csv file not specified";
+        return(false);
+    }
+    qDebug() << "Using dataFileName: " << dataFileName;
     datafile.setFileName(dataFileName);
     datafile.open(QIODevice::ReadOnly | QIODevice::Text);
     QTextStream in(&datafile);
@@ -1630,6 +1637,7 @@ void MainWindow::ReadDataFile()
     ui->TubeSelector->setCurrentIndex(0);
     on_TubeSelector_currentIndexChanged(tubeDataList->at(0).ID);
     //LabelPins(tubeDataList->at(0)); // should be triggered by change of index;
+    return(true);
 }
 
 void MainWindow::LabelPins(tubeData_t tubeData) {
