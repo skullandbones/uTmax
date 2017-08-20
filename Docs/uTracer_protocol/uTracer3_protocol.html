@@ -1,0 +1,160 @@
+<html>
+<head>
+
+
+<BODY text=black vLink=red link=blue bgColor=white>
+
+<p>page snippet is from <a href=#http://dos4ever.com/uTracerlog/tubetester2.html#protocol>http://dos4ever.com/uTracerlog/tubetester2.html#protocol</a></p>
+<a name=more22></a>
+<a name=protocol></a>
+<h2 align=center>15. The Communication Protocol </h2>
+<p>
+<a name=string></a>
+<p>
+<u>The command and result strings.</u><br><br>
+The communication with the uTracer is via a serial RS232 link at a speed of 9600 baud, 8 bits, no parity, and one stop bit. The commands to the uTracer are given in the form of a string of 28 (Uppercase) ASCII characters. Each character sent to the uTracer is immediately echoed. Failure to echo a character represents a malfunction of the uTracer. 
+Every two consecutive characters in the ASCII string represent an eight bit byte. The first byte is the command code. The following 8 bytes represent data. Different formats for the data are used depending on the command code, however in most cases the eight bytes are grouped into four 16 bit words representing the anode voltage, the screen voltage, the grid voltage and the filament voltage.
+
+<p>
+Some strings do not result in a response from the uTracer. Other strings result in the uTracer sending a result string. The result string also has a fixed format, and consists of 38 ASCII characters. Again every two consecutive characters in the ASCII string represent an eight bit byte.
+The first byte is the status byte which signals if the command to which the result string was a response was executed successfully. The remaining 18 bytes represent data grouped into 9 two byte words. The format of the result string is fixed (Fig. 15.2).
+<br><br>
+
+<center>
+<img src=prot1.gif border=0 >
+<p>
+Figure 15.1 Definition of the Command Strings.
+</center>
+
+<p>
+The data in both the command string as well as in the result string is always in 10 bits binary format. This means that the upper 6 bits of the data word are not used. These bits should be zero. In most cases the binary data directly represents a 10 bit result of the on-chip AD converter, or a setting of the 10 bit on-chip PWM modulator. All conversion of for the user meaningful numbers to and fro binary representations is done in the GUI. In this way a minimum amount of intelligence is needed in the micro-controller.   
+<br><br>
+
+<center>
+<img src=prot2.gif border=0 >
+<p>
+Figure 15.2 Structure of the Result String
+</center>
+
+<a name=sequence></a>
+<p>
+<u>Structure of a complete measurement sequence</u><br><br>
+<p>
+The different commands should be send in a certain order, although sending the commands in a random will not result in an error. The preferred command sequence is shown in Fig. 15.3. When the “Heater On” command is pressed, the GUI send a “Set Settings” (<00>) command followed by a “Ping” (<50>) command to obtain the current supply voltage. It then sends “Switch On Heater” (<40>) command. The only thing this command does is to copy the last word of this command to the filament PWM generator. The other words should be “0000”. The filament 
+voltage can be directly set to the final value or the GUI can generate a “soft-startup” by issuing a sequence of <40> commands with increasing filament voltage values. The uTracer does not send a response after receiving a <40> command
+<br><br>
+
+<center>
+<img src=prot3.gif border=0 >
+<p>
+Figure 15.3 Structure of a typical Measurement Session
+</center>
+
+<p>
+While the filament is heating, the user has the time to select a measurement type on the GUI and to set the proper measurement conditions. When next the user presses the “Measure Curve” button, the sequence to measure a set of curves is started. The first command issued is the <00> “Send Settings” command. This command transfers the gain settings for the anode and screen amplifiers, the required number of average measurements and the current compliance value. There is no response of the uTracer to the <00> command. Next the GUI starts issuing <10> “Do Measurement” commands. The four words in the command exactly specify the anode, screen, grid and filament voltages. After reception of the command the uTracer sets all the specified bias conditions and performs the measurement. The result is communicated back to the utracer in a result string. The value of the status byte indicates if the measurement was successful. If the status byte = 10H everything is ok, a value of 11H indicates a compliance issue on one of the two channels. The GUI can issue any number of <10> commands. At the end of a measurement sequence the GUI issues the <30> “End Measurement” command. This command discharges the high voltage buffer capacitors and set the grid voltage to zero. In the same measurement session more curves or a different type of curve can be measured by repeating the  <00>,<10><10><10>….,<30> sequence. At the end of the session the filament voltage is switched off by issuing a <40> command with a specified filament of zero volt.  
+
+<a name=format></a>
+<p>
+<u>The format of the variables</u><br><br>
+<p>
+In this section the format of the variables that are used in the communication with the uTracer will be defined. Some of these variables are one byte, while other variables use two bytes (a word).
+
+<p>
+<b>anode and screen gain</b><br>
+The anode and screen gain variable is only one byte long, and used both in the <00> command string, as well as in the result string. In the command string it is used to specify the gain of the anode or screen current amplifiers, or to specify that the “auto gain/range” option is selected. In the return string the variable returns the actual gain as it was determined by the “auto range” algorithm in the uTracer and used for the current measurement point. The lower nibble directly reflects the gain convention as it is used by the PGA113: 00H=1X, 01H=2X, 02H=5X, 03H=10X, 04H=20X, 05H=50X, 06H=100X, 07H=200X. In addition code 08H is used to indicate that the auto-gain algorithm has to be used. 
+
+<p>
+<b>averaging</b><br>
+The average variable is one byte long. The variable is only used in the <00> command string. In principle the variable can have any value in between 1 and 32 (001H and 20H). In practice only the values 1, 2, 4, 8, 16 and 32 are used. This is because the user can only choose from these values. When the variable has the value 40H it indicates that the <a href=#averaging>auto-averaging algorithm</a> has to be used
+
+<p>
+<b>compliance</b><br>
+The compliance variable is one byte long and only used in the <00> string. The variable defines the voltage of the on-chip voltage reference which is compared by the two on-chip comparators to the voltage drop over the current sense resistors. When the voltage drop over the resistor exceeds the reference voltage, the measurement is aborted. The value of the compliance variable is directly copied into the CPU register which controls the voltage reference: CVRCON. 
+<br><br>
+
+<center>
+<img src=prot4.gif border=0 >
+</center>
+
+<p>
+Since the voltage reference has to be enabled (CVREN=1) and disconnected from the output pins (CVROE=0) the highest two bits of the variable have to be always 10xxxxxx. VCRR defines the measurement range while the lowest nibble of the variable selects the tap in the resistive ladder network. When the variable has for example the value 10001111=8FH a 200 mA compliance has been selected <a href=#range>(see also section 14).</a>
+
+<p>
+<b>anode and screen voltages</b><br>
+The term anode and screen voltages in the context of the variable description is rather misleading since the variables not so much specify the anode and screen voltages itself but rather the voltages of the anode and screen buffer capacitors. It will be recalled that the cathode of the tube is referenced to the power-supply voltage of 18.5 volt so that there is also an offset of 18.5 V between the voltage of the buffer capacitor and e.g. the anode voltage. To be more precise the anode (screen) voltage is the voltage of the anode (screen) buffer capacitor minus 18.5 V. The voltage of the buffer capacitor is measured using a resistive voltage divider so that a 0-350 V range is mapped on a 0-5 V range. The conversion formulas which give the relation between variable n and the high voltage(s) are:
+<br><br>
+
+<center>
+<img src=prot5.gif border=0 >
+</center>
+
+<p>
+The anode and screen voltages variables occupy two words and are used both in the command as well as in the result string. Since a 10 bit AD converter is used, only the lower 10 bits of the two bytes are used. The variable n in these equations can have any value between 0 and 1023 (358 V). 
+
+<p>
+<b>anode and screen currents</b><br>
+The anode and screen currents are measured from the voltage drop they cause over a current sense resistor of 18 ohm. If desired the voltage drop is first amplified by a Programmable Gain Amplifier (PGA) before being fed into the AD converter. When an averaging larger than 1X is used, the uTracer just adds the measurements to the variable which is transferred to the GUI. The GUI subsequently performs the floating point division. The relation between the variable n, and the anode/screen currents (in Amps) is given by:  
+<br><br>
+
+<center>
+<img src=prot6.gif border=0 >
+</center>
+
+<p>
+The anode and screen current variables occupy two words and are only used in the result string. Although only a 10 bit AD converter is used, the variable can use the full two byte word of 16 bits for 32X averages. Two values which are also returned are the anode and screen currents <i>before</i> the PGA. In other words the voltage directly over the current sense resistors (after inversion). This value is not used by the GUI. The conversion formulas are identical to the equations above with Gain=1 and Average=1.
+
+<p>
+<b>power supply voltage</b><br>
+The power supply voltage is measured because it is an important parameter in the calculation of the settings for the proper filament voltage. It is only used in the return string. Like the high voltages, the power supply voltage is simply measured using a simple resistive voltage divider consisting of R43 and R44 <a href=#schema>(Fig. 13.1).</a> The values for R43 and R44 are chosen such that a power supply voltage range of 0-23.9 V are mapped on the ADC input range of 0-5 V. 
+<br><br>
+
+<center>
+<img src=prot7.gif border=0 >
+</center>
+
+<p>
+<b>control grid voltage</b><br>
+The control grid variable sets the control grid bias. The control grid voltage is always negative with respect to the cathode which is at the same potential as the unregulated supply voltage <a href=#highv>(see section 2)</a>. The control grid bias circuit is driven by the output voltage of the 10 bit on-chip PWM generator. Although the control grid voltage variable is 2 bytes wide (16 bits), only the lower 10 bits are used to directly program the PWM generator. The relation between the variable n and the grid bias is given by <a href=#grid>(section 7)</a>: 
+<br><br>
+
+<center>
+<img src=prot8.gif border=0 >
+</center>
+
+<p>
+<b>filament voltage</b><br>
+Also the filament voltage is controlled by a 16 bit word which is only used in the command string. The word is directly used to program one of the on-chip PWM circuits. The PWM circuit is set at a repetition frequency of 19.5 kHz, when the variable is zero the duty cycle is also zero and the filament voltage is zero. When the variable is 03FFH, the duty cycle is 100% resulting in a filament voltage equal to the supply voltage. There is a <a href=tubetester.html#fil1>quadratic relation</a> between the effective filament voltage and the duty-cycle (d). The relation between the variable (n) and the filament voltage is given by:
+<br><br>
+
+<center>
+<img src=prot9.gif border=0 >
+</center>
+
+<p>
+<b>negative boost converter voltage</b><br>
+The negative boost converter voltage is not a variable which is set by the GUI, but rather it is specified during the initialization of the firmware to a fixed value of -40 V. The relation between the variable (n) and the negative boost converter voltage (Vboost < 0) is given by: 
+<br><br>
+
+<center>
+<img src=prot10.gif border=0 >
+</center>
+
+<table align=center cellpadding=20 border=0>
+<tr>
+<td>
+<font size="4">
+<a href=#top>to top of page</a>
+</td>
+<td>
+<font size="4">
+<a href=../index.html>back to homepage</a>
+</td>
+<td>
+<font size="4">
+<a href=tubetester.html>to part I</a>
+</td>
+</table>
+
+
+</BODY>
+</HTML>
