@@ -2736,6 +2736,11 @@ background-color:rgb(0, 0, 0);
              <height>40</height>
             </size>
            </property>
+           <property name="font">
+            <font>
+             <pointsize>8</pointsize>
+            </font>
+           </property>
            <property name="toolTip">
             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select tube model in database&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
