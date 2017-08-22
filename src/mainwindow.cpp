@@ -148,6 +148,14 @@ MainWindow::MainWindow(QWidget *parent) :
     //appDir = QCoreApplication.applicationDirPath()
     uTmaxDir = QDir::homePath();
     uTmaxDir.append("/uTmax_files/");
+    qDebug() << "Home directory:" << uTmaxDir;
+    QDir dir(uTmaxDir);
+    if(!dir.exists())
+    {
+        qDebug() << "ERROR: Home directory does not exist:" << uTmaxDir;
+        std::exit(EXIT_FAILURE);
+    }
+
     dataFileName = uTmaxDir;
     dataFileName.append("data.csv");
     ReadDataFile();
