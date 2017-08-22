@@ -143,32 +143,6 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->Tabs->setCurrentIndex(0);
     //
     optimizer = new dr_optimize();
-
-    //get paths and define file names
-    //appDir = QCoreApplication.applicationDirPath()
-    uTmaxDir = QDir::homePath();
-    uTmaxDir.append("/uTmax_files/");
-    qDebug() << "Home directory:" << uTmaxDir;
-    QDir dir(uTmaxDir);
-    if(!dir.exists())
-    {
-        qDebug() << "ERROR: Home directory does not exist:" << uTmaxDir;
-        std::exit(EXIT_FAILURE);
-    }
-
-    // Read the default tube data file or ask for the file
-    dataFileName = uTmaxDir;
-    dataFileName.append("data.csv");
-    if (!ReadDataFile())
-        std::exit(EXIT_FAILURE);
-
-    // Read the calibration file or create a fresh file
-    calFileName = uTmaxDir;
-    calFileName.append("cal.txt");
-    if (!ReadCalibration())
-        std::exit(EXIT_FAILURE);
-
-    SerialPortDiscovery();
 }
 
 MainWindow::~MainWindow()
