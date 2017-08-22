@@ -171,18 +171,19 @@ void MainWindow::SerialPortDiscovery()
     //get a list of ports
     serPortInfo = QSerialPortInfo::availablePorts();
     bool found = false;
+    qDebug() << "Requested serial port:" << comport;
     foreach (QSerialPortInfo port, serPortInfo) {
-        qDebug() << "SerialPortDiscovery: comport=" << comport <<  "available=" << port.portName();
-        if (comport.contains(port.portName()) and port.portName()!="") {
+        if (port.portName().isEmpty()) continue;
+        qDebug() << "Available serial port:" << port.portName();
+        if (!found && comport.contains(port.portName())) {
             found = true;
-            break;
+            qDebug() << "Using serial port:" << comport;
+            OpenComPort(&comport);
         }
     }
-    if (found) {
-        OpenComPort(&comport);
-    }
-    else  {
-        ui->statusBar->showMessage("The requested COM port was not found, try a different one.");
+    if (!found) {
+        qDebug() << "ERROR: Requested serial port:" << comport << "not found";
+        ui->statusBar->showMessage("The requested serial port was not found, try a different one.");
     }
 }
 
