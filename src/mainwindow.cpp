@@ -147,29 +147,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->Tabs->setCurrentIndex(0);
     //
     optimizer = new dr_optimize();
-
-    //get paths and define file names
-    //appDir = QCoreApplication.applicationDirPath()
-    uTmaxDir = QDir::homePath();
-    uTmaxDir.append("/uTmax_files/");
-    dataFileName = uTmaxDir;
-    dataFileName.append("data.csv");
-    ReadDataFile();
-    calFileName = uTmaxDir;
-    calFileName.append("cal.txt");
-    ReadCalibration();
-
-    adc_scale.Va=(470000 + calData.RaVal)/calData.RaVal;
-    adc_scale.Vs=(470000 + calData.RaVal)/calData.RaVal;
-    SerialPortDiscovery();
 }
-
 
 MainWindow::~MainWindow()
 {
     delete optimizer;
     //Close open port
-    if (portInUse->isOpen()  ) {
+    if (portInUse && portInUse->isOpen()) {
         portInUse->close();
     }
     delete ui;
@@ -1409,14 +1393,19 @@ int MainWindow::GetVf(float v)
 
 //------------------------------------------------------
 // Calibration File Management
-void MainWindow::ReadCalibration()
+bool MainWindow::ReadCalibration()
 {
     //Check to see if the cal file exists
     QFile datafile(calFileName);
+    qDebug() << "Default calibration filename:" << calFileName;
     if (! datafile.exists())
     {
         //It doesn't exist so set up default values and create a file
-        datafile.open(QIODevice::WriteOnly | QIODevice::Text);
+        if (!datafile.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            qCritical() << "ERROR: failed to open for writing:" << calFileName;
+            return(false);
+        }
         QTextStream calFile(&datafile);
         calFile << "COM=COM1\n";
         calFile << "Va=1.0\n";
@@ -1447,7 +1436,7 @@ void MainWindow::ReadCalibration()
         }
         calFile.flush();
         datafile.close();
-        //qDebug() << "ReadCalibration: Created new cal file";
+        qDebug() << "ReadCalibration: Created new cal file" << calFileName;
     }
     //Initialize a Pen List-
     int r,g,b,w,h,s,v;
@@ -1468,7 +1457,11 @@ void MainWindow::ReadCalibration()
     black.setColor(QColor::fromRgb(0,0,0,255));
     black.setWidthF(2);
     //Open the cal.txt file
-    datafile.open(QIODevice::ReadOnly | QIODevice::Text);
+    if (!datafile.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        qDebug() << "ERROR: failed to open for reading:" << calFileName;
+        return(false);
+    }
     QTextStream in(&datafile);
     while ( !in.atEnd() )
     {
@@ -1514,6 +1507,11 @@ void MainWindow::ReadCalibration()
     m.clear();
     QTextStream(&m) << calData.IaMax << "mA Max";
     ui->labelInfo_3->setText(m);
+
+    adc_scale.Va=(470000 + calData.RaVal)/calData.RaVal;
+    adc_scale.Vs=(470000 + calData.RaVal)/calData.RaVal;
+
+    return(true);
 }
 
 void MainWindow::SaveCalFile()
@@ -1556,16 +1554,21 @@ void MainWindow::SaveCalFile()
 
 //------------------------------------------------------
 // Tube Data file Management
-void MainWindow::ReadDataFile()
+bool MainWindow::ReadDataFile()
 {
     //Check to see if usual data file exists
     QFile datafile(dataFileName);
+    qDebug() << "Default dataFileName:" << dataFileName;
     if (! datafile.exists(dataFileName)) {
         //It doesn't exist so ask for it
-        dataFileName="";
+        dataFileName = QString();
         dataFileName = QFileDialog::getOpenFileName(this,tr("Read Tube Data file"),QDir::homePath(),"Text (*.csv)");
     }
-    if (dataFileName=="") QCoreApplication::quit();
+    if (dataFileName.isNull()) {
+        qWarning() << "WARNING: Valve database .csv file not specified";
+        return(false);
+    }
+    qDebug() << "Using dataFileName: " << dataFileName;
     datafile.setFileName(dataFileName);
     datafile.open(QIODevice::ReadOnly | QIODevice::Text);
     QTextStream in(&datafile);
@@ -1692,6 +1695,7 @@ void MainWindow::ReadDataFile()
     ui->TubeSelector->setCurrentIndex(0);
     on_TubeSelector_currentIndexChanged(tubeDataList->at(0).ID);
     //LabelPins(tubeDataList->at(0)); // should be triggered by change of index;
+    return(true);
 }
 
 void MainWindow::LabelPins(tubeData_t tubeData) {
