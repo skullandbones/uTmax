@@ -64,7 +64,7 @@ public:
     void SerialPortDiscovery();
     ~MainWindow();
 
-    void SaveCalFile();
+    bool SaveCalFile();
     void GetReal();
     void DataSaveDialog_clicked(const QString &);
 
