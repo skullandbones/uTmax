@@ -152,9 +152,17 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete optimizer;
+    if (timer) {
+        qDebug() << "~MainWindow: Disconnecting timer";
+        disconnect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
+        delete timer;
+    }
     //Close open port
     if (portInUse && portInUse->isOpen()) {
+        qDebug() << "~MainWindow: Disconnecting serial port";
+        disconnect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
         portInUse->close();
+        delete portInUse;
     }
     delete ui;
 }
@@ -170,7 +178,6 @@ void MainWindow::SerialPortDiscovery()
     portInUse->setStopBits(QSerialPort::OneStop);
     portInUse->setFlowControl(QSerialPort::NoFlowControl);
     //10 bits????
-    connect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
 
     //get a list of ports
     serPortInfo = QSerialPortInfo::availablePorts();
@@ -196,6 +203,7 @@ void MainWindow::OpenComPort(const QString *portName)
     qDebug() <<"MainWindow::OpenComPort";
     //Close open port
     if (portInUse->isOpen()) {
+        disconnect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
         qDebug() << "Closing Port:" << portInUse->portName();
         portInUse->close();
     }
@@ -206,6 +214,7 @@ void MainWindow::OpenComPort(const QString *portName)
     QString msg;
     if ( portInUse->open(QIODevice::ReadWrite))
     {
+        connect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
         msg = QString("Port %1 opened").arg(comport);
         SaveCalFile(); //Update cal file with new port info
     }
