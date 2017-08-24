@@ -185,7 +185,7 @@ void MainWindow::SerialPortDiscovery()
         if (!found && comport.contains(port.portName())) {
             found = true;
             qDebug() << "Using serial port:" << comport;
-            OpenComPort(&comport);
+            OpenComPort(&comport, false);
         }
     }
     if (!found) {
@@ -194,7 +194,7 @@ void MainWindow::SerialPortDiscovery()
     }
 }
 
-void MainWindow::OpenComPort(const QString *portName)
+void MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
 {
     qDebug() <<"MainWindow::OpenComPort";
     //Close open port
@@ -212,7 +212,8 @@ void MainWindow::OpenComPort(const QString *portName)
     {
         connect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
         msg = QString("Port %1 opened").arg(comport);
-        SaveCalFile(); //Update cal file with new port info
+        if(updateCalFile)
+            SaveCalFile(); //Update cal file with new port info
     }
     else
     {

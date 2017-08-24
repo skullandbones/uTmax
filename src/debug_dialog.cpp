@@ -142,13 +142,13 @@ void debug_dialog::UpdateComSel()
     }
     openPortEn=true;
     QString comport = mw->serPortInfo.at(0).portName();
-    if (i==1) mw->OpenComPort(&comport);
+    if (i == 1) mw->OpenComPort(&comport, true);
 }
 
 
 void debug_dialog::on_ComSel_currentIndexChanged(const QString &arg1)
 {
-   if (openPortEn) mw->OpenComPort(&arg1);
+    if (openPortEn) mw->OpenComPort(&arg1, true);
 }
 
 void debug_dialog::on_OK_clicked()
