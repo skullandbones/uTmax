@@ -1,0 +1,36 @@
+uTmax coding style
+==================
+
+Recommended style to use to be consistent to the original style.
+
+End of line control codes
+-------------------------
+
+The source files will use UNIX end of line control codes ^J (line feed <LF>).
+Carriage returns ^M (<CR>) should not be used.
+
+The utility dos2unix can be used to convert the files to UNIX format. 
+
+Indentation
+-----------
+
+Indentation is 4 spaces, there are no tabs.
+
+C++ comments
+------------
+
+Use a space after // and start comment with a Capital letter
+
+// Comment
+
+
+if statements
+-------------
+
+Put the opening { on the line below the "if" condition and do not add spaces
+around the condition. Use spaces around "=". There is a space after "if".
+
+if (condition)
+{
+    statements;
+}
