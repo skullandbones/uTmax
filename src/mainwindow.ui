@@ -37,7 +37,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>utMax 1.0e</string>
+   <string>uTmax 2.0-rc1 Dean's version</string>
   </property>
   <property name="windowIcon">
    <iconset>
@@ -2685,7 +2685,7 @@ border-color: #800000;
      <x>0</x>
      <y>0</y>
      <width>651</width>
-     <height>22</height>
+     <height>19</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuUtgui">
