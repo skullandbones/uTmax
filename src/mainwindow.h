@@ -60,7 +60,7 @@ public:
     QString dataFileName;
     QString calFileName;
     void ReadCalibration();
-    void ReadDataFile();
+    bool ReadDataFile();
     ~MainWindow();
 
     void SaveCalFile();
