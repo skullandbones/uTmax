@@ -59,7 +59,7 @@ public:
     calData_t calData;
     QString dataFileName;
     QString calFileName;
-    void ReadCalibration();
+    bool ReadCalibration();
     bool ReadDataFile();
     ~MainWindow();
 

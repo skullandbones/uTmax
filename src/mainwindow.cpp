@@ -162,12 +162,12 @@ MainWindow::MainWindow(QWidget *parent) :
     if (!ReadDataFile())
         std::exit(EXIT_FAILURE);
 
+    // Read the calibration file or create a fresh file
     calFileName = uTmaxDir;
     calFileName.append("cal.txt");
-    ReadCalibration();
+    if (!ReadCalibration())
+        std::exit(EXIT_FAILURE);
 
-    adc_scale.Va=(470000 + calData.RaVal)/calData.RaVal;
-    adc_scale.Vs=(470000 + calData.RaVal)/calData.RaVal;
     SerialPortDiscovery();
 }
 
@@ -1363,14 +1363,19 @@ int MainWindow::GetVf(float v)
 
 //------------------------------------------------------
 // Calibration File Management
-void MainWindow::ReadCalibration()
+bool MainWindow::ReadCalibration()
 {
     //Check to see if the cal file exists
     QFile datafile(calFileName);
+    qDebug() << "Default calibration filename:" << calFileName;
     if (! datafile.exists())
     {
         //It doesn't exist so set up default values and create a file
-        datafile.open(QIODevice::WriteOnly | QIODevice::Text);
+        if (!datafile.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            qDebug() << "ERROR: failed to open for writing:" << calFileName;
+            return(false);
+        }
         QTextStream calFile(&datafile);
         calFile << "COM=COM1\n";
         calFile << "Va=1.0\n";
@@ -1401,7 +1406,7 @@ void MainWindow::ReadCalibration()
         }
         calFile.flush();
         datafile.close();
-        //qDebug() << "ReadCalibration: Created new cal file";
+        qDebug() << "ReadCalibration: Created new cal file" << calFileName;
     }
     //Initialize a Pen List-
     int r,g,b,w,h,s,v;
@@ -1422,7 +1427,11 @@ void MainWindow::ReadCalibration()
     black.setColor(QColor::fromRgb(0,0,0,255));
     black.setWidthF(2);
     //Open the cal.txt file
-    datafile.open(QIODevice::ReadOnly | QIODevice::Text);
+    if (!datafile.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        qDebug() << "ERROR: failed to open for reading:" << calFileName;
+        return(false);
+    }
     QTextStream in(&datafile);
     while ( !in.atEnd() )
     {
@@ -1468,6 +1477,11 @@ void MainWindow::ReadCalibration()
     m.clear();
     QTextStream(&m) << calData.IaMax << "mA Max";
     ui->labelInfo_3->setText(m);
+
+    adc_scale.Va=(470000 + calData.RaVal)/calData.RaVal;
+    adc_scale.Vs=(470000 + calData.RaVal)/calData.RaVal;
+
+    return(true);
 }
 
 void MainWindow::SaveCalFile()
