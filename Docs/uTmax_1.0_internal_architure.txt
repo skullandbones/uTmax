@@ -1,0 +1,35 @@
+Internal architecture
+=====================
+
+Forms files
+===========
+
+The forms can be graphically edited by opening the file inside qtcreator.
+
+mainwindow.ui
+-------------
+
+This form contains the design of the main window.
+
+MainWindow class:
+
+windowTitle contains the program name at the top of the main window.
+
+
+Intermediate source files
+=========================
+
+moc_mainwindow.cpp is auto-generated Meta object code which is compiled by the
+Meta-Object Compiler, moc. Among other things, meta-object code is required for
+the signals and slots mechanism, the run-time type information, and the dynamic
+property system.
+
+
+ui_mainwindow.h is auto-generated and contains class Ui_MainWindow which has
+void setupUi(QMainWindow *MainWindow) to create the main window display.
+
+
+Calibration file
+================
+
+The calibration file contains the name of the selected serial port.

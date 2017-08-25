@@ -1,0 +1,143 @@
+Dean's notes on trying to get uTmax to run or build.
+
+Building using qmake and mmake
+==============================
+
+To use the shared libaries from the current directory use:
+export LD_LIBRARY_PATH=./
+
+Run-time error:
+./uTmax 
+./uTmax: symbol lookup error: ./libQt5Core.so.5: undefined symbol: u_strToUpper_53
+
+Hmm. it seems QT 5.4 development environment is needed to build uTmax.
+Download qt-opensource-linux-x64-5.4.2.run from http://download.qt.io/archive/qt/5.4/5.4.2/
+using chrome to download, it creates qt-opensource-linux-x64-5.4.2.bin
+run the bin file to install QT into /home/dean/Qt5.4.2
+
+The QT Creator program is available but not sure it is needed
+
+To pick up the QT libs use
+export LD_LIBRARY_PATH=./:/home/dean/Qt5.4.2/5.4/gcc_64/lib/
+
+
+Next attempt running gives:
+ ./uTmax 
+This application failed to start because it could not find or load the Qt platform plugin "xcb".
+
+Reinstalling the application may fix this problem.
+Aborted
+
+export QT_QPA_PLATFORM_PLUGIN_PATH=/home/dean/Qt5.4.2/5.4/gcc_64/plugins/platforms
+
+
+Hmm, so try to rebuild uTmax
+Set path so qmake can be found
+export PATH=/home/dean/Qt5.4.2/5.4/gcc_64/bin:$PATH
+
+in the uTmax_1-0 directory
+run qmake to create the Makefile
+run make to do the build, the ouput goes into the release and release_obj directories
+I renamed the original directories to .orig
+
+That worked, now ./uTmax runs.
+
+export LD_LIBRARY_PATH=./:/home/dean/Qt5.4.2/5.4/gcc_64/lib/
+export QT_QPA_PLATFORM_PLUGIN_PATH=/home/dean/Qt5.4.2/5.4/gcc_64/plugins/platforms
+export PATH=/home/dean/Qt5.4.2/5.4/gcc_64/bin:$PATH
+./uTmax
+
+Seem that uTmax has a hard-coded path to the /home/dean/uTmax_files to your cal.txt file otherwise reports that can't save the cal file.
+
+Used real serial port /dev/ttyS1 which seems to be more reliable than USB to serial adaptor.
+
+
+Using Qt Creator 4.3.2 on Qt 5.4.2
+==================================
+
+Instead of using the command line to build etc. use the Qt Creator IDE.
+
+It is best to install the Linux distro Qt packages instead of using the external Qt environment.
+
+Therefore, installed the following Mageia 5 Qt packages:
+
+[root@localhost ~]# urpmi qt-creator
+To satisfy dependencies, the following packages are going to be installed:
+  Package                        Version      Release       Arch    
+(medium "Core Release (distrib1)")
+  lib64freetds0                  0.91         8.mga5        x86_64  (recommended)
+(medium "Core Updates (distrib3)")
+  lib64openssl-devel             1.0.2k       1.mga5        x86_64  (recommended)
+  lib64pq5                       9.4.12       1.mga5        x86_64  (recommended)
+  lib64qt5base5-devel            5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5bootstrap-devel        5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5concurrent-devel       5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5concurrent5            5.4.2        1.1.mga5      x86_64  
+  lib64qt5core-devel             5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5dbus-devel             5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5declarative5           5.4.2        1.mga5        x86_64  
+  lib64qt5gui-devel              5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5network-devel          5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5opengl-devel           5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5opengl5                5.4.2        1.1.mga5      x86_64  
+  lib64qt5printsupport-devel     5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5qml5                   5.4.2        1.mga5        x86_64  
+  lib64qt5quick5                 5.4.2        1.mga5        x86_64  
+  lib64qt5quickparticles5        5.4.2        1.mga5        x86_64  
+  lib64qt5quicktest5             5.4.2        1.mga5        x86_64  
+  lib64qt5quickwidgets5          5.4.2        1.mga5        x86_64  
+  lib64qt5sql-devel              5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5sql5                   5.4.2        1.1.mga5      x86_64  
+  lib64qt5test-devel             5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5test5                  5.4.2        1.1.mga5      x86_64  
+  lib64qt5webkit5                5.4.2        1.mga5        x86_64  
+  lib64qt5webkitwidgets5         5.4.2        1.mga5        x86_64  
+  lib64qt5widgets-devel          5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qt5xml-devel              5.4.2        1.1.mga5      x86_64  (recommended)
+  lib64qtclucene5                5.4.2        1.mga5        x86_64  
+  lib64qtdesigner5               5.4.2        1.mga5        x86_64  
+  lib64qthelp5                   5.4.2        1.mga5        x86_64  
+  lib64qtscript5                 5.4.2        1.mga5        x86_64  
+  qt-creator                     3.4.2        1.mga5        x86_64  
+  qt-creator-doc                 3.4.2        1.mga5        noarch  (recommended)
+  qtbase5-common-devel           5.4.2        1.1.mga5      x86_64  (recommended)
+  qtbase5-database-plugin-mysql  5.4.2        1.1.mga5      x86_64  (recommended)
+  qtbase5-database-plugin-odbc   5.4.2        1.1.mga5      x86_64  (recommended)
+  qtbase5-database-plugin-pgsql  5.4.2        1.1.mga5      x86_64  (recommended)
+  qtbase5-database-plugin-sqlite 5.4.2        1.1.mga5      x86_64  (recommended)
+  qtbase5-database-plugin-tds    5.4.2        1.1.mga5      x86_64  (recommended)
+  qtdeclarative5                 5.4.2        1.mga5        x86_64  
+  qtquickcontrols5               5.4.2        1.mga5        x86_64  
+  qttools5-assistant             5.4.2        1.mga5        x86_64  (recommended)
+  qttools5-designer              5.4.2        1.mga5        x86_64  (recommended)
+209MB of additional disk space will be used.
+52MB of packages will be retrieved.
+Proceed with the installation of the 44 packages? (Y/n) y
+
+Also install the qtserialport packages
+lib64qt5serialport-devel-5.4.2-1.mga5
+lib64qt5serialport-private-devel-5.4.2-1.mga5
+lib64qt5serialport5-5.4.2-1.mga5
+which were introduced inn Qt 5.1 so the 3rd party variant is not required.
+
+If Qt Creator shows no "kits" then check that the Qt version field has been set for
+the desktop kit. Use the "manage" button to bring a pop-up, use "add" to add the path
+to /usr/bin/qmake.
+
+
+3rd party GSL
+=============
+
+This code comes from https://www.gnu.org/software/gsl/ and is a GNU free
+scientific maths library functions for C and C++
+
+uTman originally came with version 1.8 as 3rd party code.
+GNU latest is 2.4 as of 19 June 2017
+Mageia 5 has 1.16 available as a package
+
+
+qmake
+=====
+
+qmake needs the .ui files
+
