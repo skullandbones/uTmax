@@ -179,8 +179,8 @@ void MainWindow::SerialPortDiscovery()
     portInUse->setFlowControl(QSerialPort::NoFlowControl);
     //10 bits????
 
-    //get a list of ports
-    serPortInfo = QSerialPortInfo::availablePorts();
+    // Get a list of serial ports
+    QList<QSerialPortInfo> serPortInfo = QSerialPortInfo::availablePorts();
     bool found = false;
     qDebug() << "Requested serial port:" << comport;
     foreach (QSerialPortInfo port, serPortInfo) {

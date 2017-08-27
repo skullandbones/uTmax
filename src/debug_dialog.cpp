@@ -127,14 +127,16 @@ void debug_dialog::UpdateComSel()
     openPortEn = false;
     ui->ComSel->clear();
 
+    // Get a list of serial ports
+    QList<QSerialPortInfo> serPortInfo = QSerialPortInfo::availablePorts();
     int portEntries = 0;
     int portNonEntries = 0;
     int firstEntry = -1;
     int firstNonEntry = -1;
     bool currentSerialPort = false;
-    foreach (QSerialPortInfo port, mw->serPortInfo)
+    foreach (QSerialPortInfo port, serPortInfo)
     {
-        if (!port.portName().isNull())
+        if (!port.portName().isEmpty())
         {
             ui->ComSel->addItem(port.portName());
             qDebug() << "UpdateComSel(): serPortInfo:" << port.portName() << " comport:" << mw->comport;
@@ -157,7 +159,7 @@ void debug_dialog::UpdateComSel()
     // then open it, and update the calibration file with the new serial port name.
     if (!currentSerialPort && firstEntry != -1)
     {
-        QString comport = mw->serPortInfo.at(firstEntry).portName();
+        QString comport = serPortInfo.at(firstEntry).portName();
         qDebug() << "UpdateComSel(): Selecting the default serial port:" << comport;
         ui->ComSel->setCurrentIndex(firstNonEntry);
         mw->OpenComPort(&comport, true);

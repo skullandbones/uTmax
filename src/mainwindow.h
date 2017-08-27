@@ -140,9 +140,7 @@ public:
     float VgNow;
     float VfNow;
     //QextSerialPort * portInUse;
-    //QList<QextPortInfo> serPortInfo;
     QSerialPort * portInUse;
-    QList<QSerialPortInfo> serPortInfo;
     QString comport;
     void OpenComPort(const QString *, bool updateCalFile);
     QString uTmaxDir;
