@@ -185,7 +185,7 @@ void MainWindow::SerialPortDiscovery()
         if (!found && comport.contains(port.portName())) {
             found = true;
             qDebug() << "Using serial port:" << comport;
-            OpenComPort(&comport);
+            OpenComPort(&comport, false);
         }
     }
     if (!found) {
@@ -194,7 +194,7 @@ void MainWindow::SerialPortDiscovery()
     }
 }
 
-void MainWindow::OpenComPort(const QString *portName)
+void MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
 {
     qDebug() <<"MainWindow::OpenComPort";
     //Close open port
@@ -212,7 +212,8 @@ void MainWindow::OpenComPort(const QString *portName)
     {
         connect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
         msg = QString("Port %1 opened").arg(comport);
-        SaveCalFile(); //Update cal file with new port info
+        if(updateCalFile)
+            SaveCalFile(); //Update cal file with new port info
     }
     else
     {
@@ -1349,68 +1350,68 @@ int MainWindow::GetVf(float v)
 // Calibration File Management
 bool MainWindow::ReadCalibration()
 {
-    //Check to see if the cal file exists
-    QFile datafile(calFileName);
-    qDebug() << "Default calibration filename:" << calFileName;
-    if (! datafile.exists())
+    // Start with the default calibration values
+    // Default to the first serial port (if present)
+    QList<QSerialPortInfo> serPortInfo = QSerialPortInfo::availablePorts();
+    if (serPortInfo.count() > 0 && !serPortInfo.at(0).portName().isEmpty())
     {
-        //It doesn't exist so set up default values and create a file
-        if (!datafile.open(QIODevice::WriteOnly | QIODevice::Text))
-        {
-            qDebug() << "ERROR: failed to open for writing:" << calFileName;
-            return(false);
-        }
-        QTextStream calFile(&datafile);
-        calFile << "COM=COM1\n";
-        calFile << "Va=1.0\n";
-        calFile << "Vs=1.0\n";
-        calFile << "Ia=1.0\n";
-        calFile << "Is=1.0\n";
-        calFile << "Vsu=1.0\n";
-        calFile << "Vg1=1.0\n";
-        calFile << "Vg4=1.0\n";
-        calFile << "Vg40=1.0\n";
-        calFile << "Vg40=1.0\n";
-        calFile << "Vn=1.0\n";
-        calFile << "RaVal=6800\n";
-        calFile << "VaMax=300\n";
-        calFile << "IaMax=200\n";
-        calFile << "IsMax=200\n";
-        calFile << "VgMax=50\n";
-        calFile << ";Define pen number,color RGB, and width\n";
-        int r,g,b,w,h,s,v;
-        for(int i=0; i<16; i++) {
-            h = (360*(i % 16))/16;
-            s = 200;
-            v = 240-100*(i/16);
-            r = QColor::fromHsv(h,s,v,255).red() ;
-            g = QColor::fromHsv(h,s,v,255).green() ;
-            b = QColor::fromHsv(h,s,v,255).blue() ;
-            calFile << "PenNRGBWS="<< i << "," << r << "," << g << "," << b << "," << 2 << "\n";
-        }
-        calFile.flush();
-        datafile.close();
-        qDebug() << "ReadCalibration: Created new cal file" << calFileName;
+        // Use the first available serial port
+        comport = serPortInfo.at(0).portName();
     }
-    //Initialize a Pen List-
-    int r,g,b,w,h,s,v;
+    else
+    {
+        // Otherwise indicate no serial port
+        comport = "none";
+    }
+
+    // These are the calibrations values including comport.
+    calData.VaVal = 1.0;
+    calData.VsVal = 1.0;
+    calData.IaVal = 1.0;
+    calData.IsVal = 1.0;
+    calData.VsuVal = 1.0;
+    calData.Vg1Val = 1.0;
+    calData.Vg4Val = 1.0;
+    calData.Vg40Val = 1.0;
+    calData.VnVal = 1.0;
+    calData.RaVal = 6800;
+    calData.VaMax = 300;
+    calData.IaMax = 200;
+    calData.IsMax = 200;
+    calData.VgMax = 50;
+
+    // Initialise the Pen List colours
+    int r, g, b, h, s, v;
     QPen grPen;
-    for(int i=0; i<16; i++) {
-        h = (360*(i % 16))/16;
+    for (int i = 0; i < 16; i++)
+    {
+        h = (360 * (i % 16)) / 16;
         s = 200;
-        v = 240-100*(i/16);
-        r = QColor::fromHsv(h,s,v,255).red() ;
-        g = QColor::fromHsv(h,s,v,255).green() ;
-        b = QColor::fromHsv(h,s,v,255).blue() ;
-        grPen.setColor(QColor::fromRgb(r,g,b));
+        v = 240 - 100 * (i / 16);
+        r = QColor::fromHsv(h, s, v, 255).red();
+        g = QColor::fromHsv(h, s, v, 255).green();
+        b = QColor::fromHsv(h, s, v, 255).blue();
+        grPen.setColor(QColor::fromRgb(r, g, b));
         grPen.setWidthF(2);
         penList->append(grPen);
     }
-    //Create a black pen to fill unused entries
+
+    // Check to see if the calibration file exists
+    QFile datafile(calFileName);
+    qDebug() << "Default calibration filename:" << calFileName;
+    if (!datafile.exists())
+    {
+        // Create a default calibration file
+        if (!SaveCalFile())
+            return(false);
+    }
+
+    // Create a black pen to fill unused entries
     QPen black;
     black.setColor(QColor::fromRgb(0,0,0,255));
     black.setWidthF(2);
-    //Open the cal.txt file
+
+    // Read the calibration file which will replace the default settings in memory
     if (!datafile.open(QIODevice::ReadOnly | QIODevice::Text))
     {
         qDebug() << "ERROR: failed to open for reading:" << calFileName;
@@ -1468,14 +1469,14 @@ bool MainWindow::ReadCalibration()
     return(true);
 }
 
-void MainWindow::SaveCalFile()
+bool MainWindow::SaveCalFile()
 {
     qDebug () << "SaveCalFile...";
+    bool ret = false;
     QFile datafile(calFileName);
     if (datafile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream calFile(&datafile);
-        if (portInUse!=NULL) calFile << "COM=" << portInUse->portName() << "\n";
-        else calFile << "COM=COM1\n";
+        calFile << "COM=" << comport << "\n";
         calFile << "Va=" << calData.VaVal << "\n";
         calFile << "Vs=" << calData.VsVal << "\n";
         calFile << "Ia=" << calData.IaVal << "\n";
@@ -1502,8 +1503,11 @@ void MainWindow::SaveCalFile()
         }
         calFile.flush();
         datafile.close();
+        ret = true;
         //qDebug() << "SaveCalFile: ...updated cal file";
     } else qDebug() << "Save Cal file failed";
+
+    return(ret);
 }
 
 //------------------------------------------------------

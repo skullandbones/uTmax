@@ -64,7 +64,7 @@ public:
     void SerialPortDiscovery();
     ~MainWindow();
 
-    void SaveCalFile();
+    bool SaveCalFile();
     void GetReal();
     void DataSaveDialog_clicked(const QString &);
 
@@ -143,7 +143,7 @@ public:
     QSerialPort * portInUse;
     QList<QSerialPortInfo> serPortInfo;
     QString comport;
-    void OpenComPort(const QString *);
+    void OpenComPort(const QString *, bool updateCalFile);
     QString uTmaxDir;
 
 
