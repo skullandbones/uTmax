@@ -201,22 +201,25 @@ void MainWindow::SerialPortDiscovery()
 void MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
 {
     qDebug() <<"MainWindow::OpenComPort";
-    //Close open port
-    if (portInUse->isOpen()) {
+
+    // Close open port
+    if (portInUse->isOpen())
+    {
         disconnect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
         qDebug() << "Closing Port:" << portInUse->portName();
         portInUse->close();
     }
-    //Open requested port
+
+    // Open requested port
     comport = *portName;
     portInUse->setPortName(comport);
-    qDebug() << "MainWindow::OpenComPort"  << portInUse->portName();
+    qDebug() << "MainWindow::OpenComPort" << portInUse->portName();
     QString msg;
-    if ( portInUse->open(QIODevice::ReadWrite))
+    if (portInUse->open(QIODevice::ReadWrite))
     {
         connect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
         msg = QString("Port %1 opened").arg(comport);
-        if(updateCalFile)
+        if (updateCalFile)
             SaveCalFile(); //Update cal file with new port info
     }
     else
@@ -225,8 +228,9 @@ void MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
     }
     ui->statusBar->showMessage(msg);
 
-    //Start RxData Timer
-    if (timer==NULL) {
+    // Start RxData Timer
+    if (timer==NULL)
+    {
         timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
         ui->statusBar->showMessage("Starting up...");
