@@ -142,7 +142,7 @@ public:
     //QextSerialPort * portInUse;
     QSerialPort * portInUse;
     QString comport;
-    void OpenComPort(const QString *, bool updateCalFile);
+    bool OpenComPort(const QString *, bool updateCalFile);
     QString uTmaxDir;
 
 
