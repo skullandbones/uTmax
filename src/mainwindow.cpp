@@ -1352,11 +1352,23 @@ bool MainWindow::ReadCalibration()
 {
     // Start with the default calibration values
     // Default to the first serial port (if present)
+    int i = 0;
+    int firstEntry = -1;
     QList<QSerialPortInfo> serPortInfo = QSerialPortInfo::availablePorts();
-    if (serPortInfo.count() > 0 && !serPortInfo.at(0).portName().isEmpty())
+    foreach (QSerialPortInfo port, serPortInfo)
+    {
+        if (!port.portName().isEmpty())
+        {
+            if (firstEntry == -1) firstEntry = i;
+            break;
+        }
+        i++;
+    }
+
+    if (firstEntry != -1)
     {
         // Use the first available serial port
-        comport = serPortInfo.at(0).portName();
+        comport = serPortInfo.at(firstEntry).portName();
     }
     else
     {
