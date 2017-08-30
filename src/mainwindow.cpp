@@ -185,7 +185,11 @@ void MainWindow::SerialPortDiscovery()
         if (!found && comport.contains(port.portName())) {
             found = true;
             qDebug() << "Using serial port:" << comport;
-            OpenComPort(&comport, false);
+            if (!OpenComPort(&comport, false))
+            {
+                // Failed to open the serial port so set comport to "none"
+                comport = "none";
+            }
         }
     }
     if (!found) {
@@ -194,7 +198,7 @@ void MainWindow::SerialPortDiscovery()
     }
 }
 
-void MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
+bool MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
 {
     qDebug() <<"MainWindow::OpenComPort";
 
@@ -211,8 +215,10 @@ void MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
     portInUse->setPortName(comport);
     qDebug() << "MainWindow::OpenComPort" << portInUse->portName();
     QString msg;
+    bool openResult;
     if (portInUse->open(QIODevice::ReadWrite))
     {
+        openResult = true;
         connect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
         msg = QString("Port %1 opened").arg(comport);
         if (updateCalFile)
@@ -221,11 +227,12 @@ void MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
     else
     {
        msg = QString("Port %1 failed to open").arg(comport);
+       openResult = false;
     }
     ui->statusBar->showMessage(msg);
 
     // Start RxData Timer
-    if (timer==NULL)
+    if (openResult && timer == NULL)
     {
         timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
@@ -235,6 +242,8 @@ void MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
         sendADC=true;
         timer->start(TIMER_SET);
     }
+
+    return(openResult);
 }
 
 void MainWindow::readData() {
