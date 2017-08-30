@@ -164,6 +164,10 @@ void debug_dialog::UpdateComSel()
         ui->ComSel->setCurrentIndex(firstNonEntry);
         mw->OpenComPort(&comport, true);
     }
+
+    // If the list of serial ports is empty then ensure the serial port is closed
+    if (!portNonEntries) mw->CloseComPort();
+
     openPortEn = true;
 }
 
