@@ -139,12 +139,10 @@ public:
     float VsNow;
     float VgNow;
     float VfNow;
-    //QextSerialPort * portInUse;
-    QSerialPort * portInUse;
     QString comport;
     bool OpenComPort(const QString *, bool updateCalFile);
     QString uTmaxDir;
-
+    bool CloseComPort();
 
 public slots:
     //void onDeviceDiscovered(const QextPortInfo & );
@@ -293,6 +291,7 @@ private:
     QList<PlotTabWidget*> plotTabs;
     bool ignoreIndexChange;
 
+    QSerialPort *portInUse;
 
 };
 #endif // MAINWINDOW_H
