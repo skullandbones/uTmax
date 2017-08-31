@@ -151,12 +151,11 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    qDebug() << "~MainWindow: Destroy everything!";
     delete optimizer;
-    if (timer) {
-        qDebug() << "~MainWindow: Disconnecting timer";
-        disconnect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
-        delete timer;
-    }
+
+    // Stop the machine
+    StopTheMachine();
 
     // Close open port
     CloseComPort();
@@ -227,17 +226,8 @@ bool MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
     }
     ui->statusBar->showMessage(msg);
 
-    // Start RxData Timer
-    if (openResult && timer == NULL)
-    {
-        timer = new QTimer(this);
-        connect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
-        ui->statusBar->showMessage("Starting up...");
-        timer_on=true;
-        timeout=PING_TIMEOUT;
-        sendADC=true;
-        timer->start(TIMER_SET);
-    }
+    // Start the machine
+    if (openResult) StartUpMachine();
 
     return(openResult);
 }
@@ -254,6 +244,35 @@ bool MainWindow::CloseComPort()
         portInUse->close();
         delete portInUse;
         portInUse = NULL;
+    }
+}
+
+void MainWindow::StartUpMachine()
+{
+    // Start up the machine
+    if (!timer)
+    {
+        qDebug() << "StartUpMachine: Starting up the machine!";
+        ui->statusBar->showMessage("Starting up...");
+        timer_on = true;
+        timeout = PING_TIMEOUT;
+        sendADC = true;
+        timer = new QTimer(this);
+        connect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
+        timer->start(TIMER_SET);
+    }
+}
+
+void MainWindow::StopTheMachine()
+{
+    // Stop the machine
+    if (timer)
+    {
+        qDebug() << "StopTheMachine: Destroying the timer";
+        timer->stop();
+        disconnect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
+        delete timer;
+        timer = NULL;
     }
 }
 
