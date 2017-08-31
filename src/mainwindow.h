@@ -279,6 +279,8 @@ private:
     void DoPlot(plotInfo_t *  );
     void RePlot(QList<results_t> * );
     bool SaveTubeDataFile();
+    void StartUpMachine();
+    void StopTheMachine();
 
     QList<QPen> * penList;
     int RxPkt(int len, QByteArray * pCmd, QByteArray * pResponse);
