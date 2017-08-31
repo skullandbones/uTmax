@@ -153,30 +153,18 @@ MainWindow::~MainWindow()
         disconnect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
         delete timer;
     }
-    //Close open port
-    if (portInUse && portInUse->isOpen()) {
-        qDebug() << "~MainWindow: Disconnecting serial port";
-        disconnect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
-        portInUse->close();
-        delete portInUse;
-    }
+
+    // Close open port
+    CloseComPort();
+
     delete ui;
 }
 
 // Serial Port Management
 void MainWindow::SerialPortDiscovery()
 {
-    //create a port object
-    portInUse = new QSerialPort(this);
-    portInUse->setBaudRate(QSerialPort::Baud9600);
-    portInUse->setDataBits(QSerialPort::Data8);
-    portInUse->setParity(QSerialPort::NoParity );
-    portInUse->setStopBits(QSerialPort::OneStop);
-    portInUse->setFlowControl(QSerialPort::NoFlowControl);
-    //10 bits????
-
-    //get a list of ports
-    serPortInfo = QSerialPortInfo::availablePorts();
+    // Get a list of serial ports
+    QList<QSerialPortInfo> serPortInfo = QSerialPortInfo::availablePorts();
     bool found = false;
     qDebug() << "Requested serial port:" << comport;
     foreach (QSerialPortInfo port, serPortInfo) {
@@ -185,7 +173,11 @@ void MainWindow::SerialPortDiscovery()
         if (!found && comport.contains(port.portName())) {
             found = true;
             qDebug() << "Using serial port:" << comport;
-            OpenComPort(&comport, false);
+            if (!OpenComPort(&comport, false))
+            {
+                // Failed to open the serial port so set comport to "none"
+                comport = "none";
+            }
         }
     }
     if (!found) {
@@ -194,35 +186,46 @@ void MainWindow::SerialPortDiscovery()
     }
 }
 
-void MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
+bool MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
 {
+    CloseComPort();
+
     qDebug() <<"MainWindow::OpenComPort";
-    //Close open port
-    if (portInUse->isOpen()) {
-        disconnect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
-        qDebug() << "Closing Port:" << portInUse->portName();
-        portInUse->close();
-    }
-    //Open requested port
+
+    // Create a serial port object
+    portInUse = new QSerialPort(this);
+    portInUse->setBaudRate(QSerialPort::Baud9600);
+    portInUse->setDataBits(QSerialPort::Data8);
+    portInUse->setParity(QSerialPort::NoParity );
+    portInUse->setStopBits(QSerialPort::OneStop);
+    portInUse->setFlowControl(QSerialPort::NoFlowControl);
+
+    // Open requested port
     comport = *portName;
     portInUse->setPortName(comport);
-    qDebug() << "MainWindow::OpenComPort"  << portInUse->portName();
+    qDebug() << "MainWindow::OpenComPort" << portInUse->portName();
     QString msg;
-    if ( portInUse->open(QIODevice::ReadWrite))
+    bool openResult;
+    if (portInUse->open(QIODevice::ReadWrite))
     {
+        openResult = true;
         connect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
         msg = QString("Port %1 opened").arg(comport);
-        if(updateCalFile)
+        if (updateCalFile)
             SaveCalFile(); //Update cal file with new port info
     }
     else
     {
-       msg = QString("Port %1 failed to open").arg(comport);
+        delete portInUse;
+        portInUse = NULL;
+        msg = QString("Port %1 failed to open").arg(comport);
+        openResult = false;
     }
     ui->statusBar->showMessage(msg);
 
-    //Start RxData Timer
-    if (timer==NULL) {
+    // Start RxData Timer
+    if (openResult && timer == NULL)
+    {
         timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
         ui->statusBar->showMessage("Starting up...");
@@ -231,10 +234,28 @@ void MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
         sendADC=true;
         timer->start(TIMER_SET);
     }
+
+    return(openResult);
 }
 
-void MainWindow::readData() {
-    RxString.append(portInUse->readAll());
+bool MainWindow::CloseComPort()
+{
+    qDebug() <<"MainWindow::CloseComPort";
+
+    // Close open port
+    if (portInUse)
+    {
+        disconnect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
+        qDebug() << "Closing Port:" << portInUse->portName();
+        portInUse->close();
+        delete portInUse;
+        portInUse = NULL;
+    }
+}
+
+void MainWindow::readData()
+{
+    if (portInUse) RxString.append(portInUse->readAll());
 }
 
 int MainWindow::RxPkt(int len, QByteArray * cmd, QByteArray * response)
@@ -319,7 +340,7 @@ void MainWindow::RxData()
     }
     // ---------------------------------------------------
     // sanity check that the port is still OK
-    if (!portInUse->isOpen())
+    if (!portInUse || !portInUse->isOpen())
     {
         ui->statusBar->showMessage("COM port was closed, exit and restart.");
         return;
@@ -791,7 +812,7 @@ void MainWindow::sendSer()
     //qDebug() << "Tx:" << TxString;
     //while (!serQueue.isEmpty()) {serQueue.dequeue();}
     //RxString.clear();
-    portInUse->write(TxString);
+    if (portInUse) portInUse->write(TxString);
 }
 
 // ------------------
@@ -1352,11 +1373,23 @@ bool MainWindow::ReadCalibration()
 {
     // Start with the default calibration values
     // Default to the first serial port (if present)
+    int i = 0;
+    int firstEntry = -1;
     QList<QSerialPortInfo> serPortInfo = QSerialPortInfo::availablePorts();
-    if (serPortInfo.count() > 0 && !serPortInfo.at(0).portName().isEmpty())
+    foreach (QSerialPortInfo port, serPortInfo)
+    {
+        if (!port.portName().isEmpty())
+        {
+            if (firstEntry == -1) firstEntry = i;
+            break;
+        }
+        i++;
+    }
+
+    if (firstEntry != -1)
     {
         // Use the first available serial port
-        comport = serPortInfo.at(0).portName();
+        comport = serPortInfo.at(firstEntry).portName();
     }
     else
     {

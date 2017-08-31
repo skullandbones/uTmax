@@ -123,26 +123,52 @@ void debug_dialog::UpdateVals()
 
 void debug_dialog::UpdateComSel()
 {
-    //Scrub current List
-    openPortEn =false;
+    // Scrub current List
+    openPortEn = false;
     ui->ComSel->clear();
 
-    int i=0;
-    foreach (QSerialPortInfo port, mw->serPortInfo) {
-        if (!port.portName().isNull())
+    // Get a list of serial ports
+    QList<QSerialPortInfo> serPortInfo = QSerialPortInfo::availablePorts();
+    int portEntries = 0;
+    int portNonEntries = 0;
+    int firstEntry = -1;
+    int firstNonEntry = -1;
+    bool currentSerialPort = false;
+    foreach (QSerialPortInfo port, serPortInfo)
+    {
+        if (!port.portName().isEmpty())
         {
             ui->ComSel->addItem(port.portName());
-            qDebug() << "setting serPortInfo, comport:" << port.portName() << mw->comport;
+            qDebug() << "UpdateComSel(): serPortInfo:" << port.portName() << " comport:" << mw->comport;
             if (port.portName().contains(mw->comport))
             {
-                ui->ComSel->setCurrentIndex(i);
+                ui->ComSel->setCurrentIndex(portNonEntries);
+                currentSerialPort = true;
             }
-            i++;
+            if (firstEntry == -1)
+            {
+                firstEntry = portEntries;
+                firstNonEntry = portNonEntries;
+            }
+            portNonEntries++;
         }
+        portEntries++;
     }
-    openPortEn=true;
-    QString comport = mw->serPortInfo.at(0).portName();
-    if (i == 1) mw->OpenComPort(&comport, true);
+
+    // If the requested serial port is not found then select the first entry in the list (if available),
+    // then open it, and update the calibration file with the new serial port name.
+    if (!currentSerialPort && firstEntry != -1)
+    {
+        QString comport = serPortInfo.at(firstEntry).portName();
+        qDebug() << "UpdateComSel(): Selecting the default serial port:" << comport;
+        ui->ComSel->setCurrentIndex(firstNonEntry);
+        mw->OpenComPort(&comport, true);
+    }
+
+    // If the list of serial ports is empty then ensure the serial port is closed
+    if (!portNonEntries) mw->CloseComPort();
+
+    openPortEn = true;
 }
 
 
