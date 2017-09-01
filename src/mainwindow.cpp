@@ -585,6 +585,7 @@ void MainWindow::RxData()
 
     if (sendADC == true)
     {
+        qDebug() << "RxData: Action sendADC";
         heat = 0;
         SendADCCommand(&CmdRsp);
         status = wait_adc;
@@ -594,6 +595,7 @@ void MainWindow::RxData()
 
     if (sendPing == true)
     {
+        qDebug() << "RxData: Action sendPing";
         heat = 0;
         SendEndMeasurementCommand(&CmdRsp);
         status = WaitPing;
@@ -615,6 +617,7 @@ void MainWindow::RxData()
     // Check for timeout
     if (RxCode == RXTIMEOUT)
     {
+        qDebug() << "RxData: Action RxCode RXTIMEOUT";
         ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
         SendEndMeasurementCommand(&CmdRsp);
         response.clear();
@@ -625,6 +628,7 @@ void MainWindow::RxData()
     // Check for invalid rsponse
     if (RxCode == RXINVALID)
     {
+        qDebug() << "RxData: Action RxCode RXINVALID";
         ui->statusBar->showMessage("Unexpected response from uTracer; power cycle and restart");
         response.clear();
         status = Idle;
@@ -634,6 +638,8 @@ void MainWindow::RxData()
     // ---------------------------------------------------
     // Main state machine
     // Check state
+    qDebug() << "RxData: status:" << status << ":" << status_name[status];
+
     switch (status)
     {
         case Idle:
