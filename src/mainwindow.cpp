@@ -335,6 +335,7 @@ void MainWindow::RxData()
 
     if (sendADC == true)
     {
+        qDebug() << "RxData: Action sendADC";
         cmd = TxString = "500000000000000000";
         rxLen = TxString.length() + 38;
         heat = 0;
@@ -348,6 +349,7 @@ void MainWindow::RxData()
 
     if (sendPing == true)
     {
+        qDebug() << "RxData: Action sendPing";
         cmd = TxString = "300000000000000000";
         rxLen = TxString.length();
         heat = 0;
@@ -373,6 +375,7 @@ void MainWindow::RxData()
     // Check for timeout
     if (RxCode == RXTIMEOUT && timer_on)
     {
+        qDebug() << "RxData: Action RxCode RXTIMEOUT";
         ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
         TxString = "300000000000000000";
         response.clear();
@@ -387,6 +390,7 @@ void MainWindow::RxData()
     // Check for invalid rsponse
     if (RxCode == RXINVALID)
     {
+        qDebug() << "RxData: Action RxCode RXINVALID";
         ui->statusBar->showMessage("Unexpected response from uTracer; power cycle and restart");
         response.clear();
         rxLen = 0;
@@ -398,6 +402,8 @@ void MainWindow::RxData()
     // ---------------------------------------------------
     // Main state machine
     // Check state
+    qDebug() << "RxData: status:" << status << ":" << status_name[status];
+
     switch (status)
     {
         case Idle:

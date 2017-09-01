@@ -189,11 +189,14 @@ private:
     void CreateTestVectors();
     void ClearLCDs();
 
-
     enum Status_t { WaitPing, Heating, Heating_wait00, Heating_wait_adc,
                     Sweep_set, Sweep_adc, Idle, wait_adc,
-                    hold_ack, hold, heat_done,HeatOff};
+                    hold_ack, hold, heat_done, HeatOff};
     Status_t status;
+    QString status_name[HeatOff + 1] = {"WaitPing", "Heating", "Heating_wait00", "Heating_wait_adc",
+                                        "Sweep_set", "Sweep_adc", "Idle", "wait_adc",
+                                        "hold_ack", "hold", "heat_done", "HeatOff"};
+
     int startSweep;
     int VsStep;
     int VgStep;
