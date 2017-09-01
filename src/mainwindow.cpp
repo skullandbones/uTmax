@@ -277,37 +277,34 @@ void MainWindow::readData()
     if (portInUse) RxString.append(portInUse->readAll());
 }
 
-int MainWindow::RxPkt(int len, QByteArray * cmd, QByteArray * response)
+int MainWindow::RxPkt(int len, QByteArray *cmd, QByteArray *response)
 {
-    //if (portInUse->bytesAvailable()>0)   RxString.append(portInUse->readAll());
     if (len==0) return RXCONTINUE;
-    //qDebug() << "RxPkt: cmd is: len=" << len << "cmd=" << cmd->constData();
     timeout--;
-    if (timeout ==0) {
+    if (timeout == 0)
+    {
         RxString.clear();
         response->clear();
         qDebug() << "RxPkt: TIMEOUT";
         return RXTIMEOUT;
     }
-    //if (RxString.length()>0) qDebug() << "RxPkt: RxString is:" << RxString << "len is now::" << RxString.length();
-    if (RxString.length()>=len) {
-        if ( (cmd->length()==0) || RxString.startsWith(* cmd) ) {
-            * response = RxString.mid(cmd->length(),len);
-            //qDebug() << "RxPkt: reply OK, response" << response->constData();
+    if (RxString.length() >= len)
+    {
+        if ((cmd->length() == 0) || RxString.startsWith(*cmd))
+        {
+            *response = RxString.mid(cmd->length(), len);
             RxString.clear();
-            if (len==18) echoString = TxString;
-            if (len==38+18) {
+            if (len == 18) echoString = TxString;
+            if (len == 38 + 18)
+            {
                 echoString = TxString;
                 statusString = response->constData();
             }
-            //if (len==18+18) {
-            //    echoString = TxString;
-            //    statusString = response->constData();
-            //}
             cmd->clear();
-            return RXSUCCESS ;
+            return RXSUCCESS;
         }
-        else {
+        else
+        {
             qDebug() << "RxPkt: reply invalid=" << RxString;
             RxString.clear();
             response->clear();
