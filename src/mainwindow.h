@@ -151,6 +151,7 @@ public:
     void DataSaveDialog_clicked(const QString &);
     bool OpenComPort(const QString *, bool updateCalFile);
     bool CloseComPort();
+    void RequestOperation(Operation_t ReqOperation);
 
 public slots:
 
