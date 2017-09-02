@@ -222,8 +222,8 @@ bool MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
     }
     ui->statusBar->showMessage(msg);
 
-    // Start the machine
-    if (openResult) StartUpMachine();
+    // Probe for the uTracer being present
+    if (openResult) RequestOperation((Operation_t) Probe);
 
     return(openResult);
 }
@@ -243,16 +243,63 @@ bool MainWindow::CloseComPort()
     }
 }
 
+void MainWindow::RequestOperation(Operation_t ReqOperation)
+{
+    switch (ReqOperation)
+    {
+        case Stop:
+        {
+            qDebug() << "RequestOperation: Stop";
+            stop = true;
+            StartUpMachine();
+            break;
+        }
+        case Probe:
+        {
+            qDebug() << "RequestOperation: Probe";
+            ui->statusBar->showMessage("Starting up...");
+            sendADC = true;
+            StartUpMachine();
+            break;
+        }
+        case Ping:
+        {
+            qDebug() << "RequestOperation: Ping";
+            sendPing = true;
+            StartUpMachine();
+            break;
+        }
+        case ReadADC:
+        {
+            qDebug() << "RequestOperation: ReadADC";
+            sendADC = true;
+            StartUpMachine();
+            break;
+        }
+        case Start:
+        {
+            qDebug() << "RequestOperation: Start";
+            if (SetUpSweepParams())
+            {
+                startSweep += 1;
+                StartUpMachine();
+            }
+            break;
+        }
+        default:
+        {
+            qDebug() << "ERROR: RequestOperation: Unrecognised operation:" << ReqOperation;
+            break;
+        }
+    }
+}
+
 void MainWindow::StartUpMachine()
 {
     // Start up the machine
     if (!timer)
     {
         qDebug() << "StartUpMachine: Starting up the machine!";
-        ui->statusBar->showMessage("Starting up...");
-        timer_on = true;
-        timeout = PING_TIMEOUT;
-        sendADC = true;
         timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
         timer->start(TIMER_SET);
@@ -447,6 +494,11 @@ void MainWindow::RxData()
                 sendSer();
                 timer_on = true;
                 timeout = PING_TIMEOUT;
+            }
+            else
+            {
+                // All operations completed so stop
+                StopTheMachine();
             }
             break;
         }
@@ -2314,10 +2366,9 @@ bool MainWindow::SetUpSweepParams() {
     return true;
 }
 
-void MainWindow::on_Start_clicked() {
-    if (!SetUpSweepParams()) return;
-
-    startSweep+=1;
+void MainWindow::on_Start_clicked()
+{
+    RequestOperation((Operation_t) Start);
 }
 void MainWindow::CreateTestVectors()
 {
@@ -2439,8 +2490,9 @@ void MainWindow::CreateTestVectors()
 void MainWindow::on_VsStart_editingFinished() {
 }
 
-void MainWindow::on_Stop_clicked() {
-    stop=true;
+void MainWindow::on_Stop_clicked()
+{
+    RequestOperation((Operation_t) Stop);
 }
 
 
