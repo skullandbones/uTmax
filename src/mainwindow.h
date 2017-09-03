@@ -285,7 +285,7 @@ private:
     int GetVs(float);
     int GetVg(float);
     int GetVf(float);
-    void sendSer();
+    void sendSer(int ExpectedRspLen);
     void StoreData(bool);
     void SetUpPlot();
     bool SetUpSweepParams();
@@ -297,5 +297,6 @@ private:
     void StartUpMachine();
     void StopTheMachine();
     int RxPkt(int len, QByteArray *pCmd, QByteArray *pResponse);
+    void SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar);
 };
 #endif // MAINWINDOW_H
