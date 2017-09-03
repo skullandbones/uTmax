@@ -294,7 +294,7 @@ private:
     void DoPlot(plotInfo_t *);
     void RePlot(QList<results_t> *);
     bool SaveTubeDataFile();
-    int RxPkt(int len, QByteArray *pCmd, QByteArray *pResponse);
+    int RxPkt(QByteArray *pResponse);
     void StartUpMachine();
     void StopTheMachine();
     void SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar);
