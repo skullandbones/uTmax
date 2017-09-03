@@ -296,7 +296,7 @@ private:
     bool SaveTubeDataFile();
     void StartUpMachine();
     void StopTheMachine();
-    int RxPkt(int len, QByteArray *pCmd, QByteArray *pResponse);
+    int RxPkt(QByteArray *pResponse);
     void SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar);
 };
 #endif // MAINWINDOW_H

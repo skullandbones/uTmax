@@ -436,41 +436,54 @@ void MainWindow::readData()
     }
 }
 
-int MainWindow::RxPkt(int len, QByteArray *cmd, QByteArray *response)
+int MainWindow::RxPkt(QByteArray *response)
 {
-    if (len==0) return RXCONTINUE;
-    timeout--;
-    if (timeout == 0)
+    int rxStatus = RXCONTINUE;
+    // Temporary
+    CommandResponse_t *pSendCmdRsp = &CmdRsp;
+
+    if (timeout)
     {
-        RxString.clear();
+        timeout--;
+
+        if (timeout == 0)
+        {
+            qDebug() << "RxPkt: TIMEOUT - try reading for missing RX";
+            readData();
+
+            rxStatus = RXTIMEOUT;
+        }
+    }
+
+    if (pSendCmdRsp->rxState == RxComplete)
+    {
+        if (pSendCmdRsp->Response.length())
+        {
+            qDebug() << "RxPkt: Processing RX response:" << pSendCmdRsp->Response;
+            *response = pSendCmdRsp->Response;
+        }
+
+        pSendCmdRsp->txState = TxIdle;
+        pSendCmdRsp->rxState = RxIdle;
+
+        timeout = 0;
+
+        // For the debug window
+        echoString = pSendCmdRsp->Command;
+        statusString = pSendCmdRsp->Response;
+
+        rxStatus = RXSUCCESS;
+    }
+
+    if (rxStatus == RXTIMEOUT)
+    {
+        // Failed to recover, so abandon the command / response
         response->clear();
-        qDebug() << "RxPkt: TIMEOUT";
-        return RXTIMEOUT;
+        pSendCmdRsp->txState = TxIdle;
+        pSendCmdRsp->rxState = RxIdle;
     }
-    if (RxString.length() >= len)
-    {
-        if ((cmd->length() == 0) || RxString.startsWith(*cmd))
-        {
-            *response = RxString.mid(cmd->length(), len);
-            RxString.clear();
-            if (len == 18) echoString = TxString;
-            if (len == 38 + 18)
-            {
-                echoString = TxString;
-                statusString = response->constData();
-            }
-            cmd->clear();
-            return RXSUCCESS;
-        }
-        else
-        {
-            qDebug() << "RxPkt: reply invalid=" << RxString;
-            RxString.clear();
-            response->clear();
-            return RXINVALID;
-        }
-    }
-    return RXCONTINUE;
+
+    return rxStatus;
 }
 //---------------------------------------------
 // The main control process
@@ -527,7 +540,7 @@ void MainWindow::RxData()
 
     // ---------------------------------------------------
     // Check for the uTracer response
-    int RxCode = RxPkt(rxLen, &cmd, &response);
+    int RxCode = RxPkt(&response);
     // Check for timeout
     if (RxCode == RXTIMEOUT && timer_on)
     {
@@ -714,7 +727,6 @@ void MainWindow::RxData()
                 else
                 {
                     ui->HeaterProg->setValue(100);
-                    timeout = PING_TIMEOUT;
                     status = heat_done;
                     timer_on = false;
                     rxLen = 0;
