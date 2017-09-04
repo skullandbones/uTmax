@@ -204,7 +204,6 @@ private:
     QTimer *timer;
     bool ok;
     bool newMessage;
-    QByteArray RxString;
     float Vdi;
     float power;
 
