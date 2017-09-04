@@ -97,7 +97,6 @@ MainWindow::MainWindow(QWidget *parent) :
     status=Idle;
     startSweep=0;
     stop=false;
-    timer_on = false;
     timeout=PING_TIMEOUT;
     timer=NULL;
     newMessage=false;
@@ -511,7 +510,6 @@ void MainWindow::RxData()
         sendADC = false;
         status = wait_adc;
         timeout = PING_TIMEOUT;
-        timer_on = true;
         return;
     }
 
@@ -523,7 +521,6 @@ void MainWindow::RxData()
         sendPing = false;
         status = WaitPing;
         timeout = PING_TIMEOUT;
-        timer_on = true;
         return;
     }
 
@@ -539,13 +536,12 @@ void MainWindow::RxData()
     // Check for the uTracer response
     int RxCode = RxPkt(&CmdRsp, &response);
     // Check for timeout
-    if (RxCode == RXTIMEOUT && timer_on)
+    if (RxCode == RXTIMEOUT)
     {
         ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
         TxString = "300000000000000000";
         response.clear();
         sendSer(0);
-        timer_on = false;
         status = Idle;
         return;
     }
@@ -555,7 +551,6 @@ void MainWindow::RxData()
     {
         ui->statusBar->showMessage("Unexpected response from uTracer; power cycle and restart");
         response.clear();
-        timer_on = false;
         status = Idle;
         return;
     }
@@ -567,7 +562,6 @@ void MainWindow::RxData()
     {
         case Idle:
         {
-            timer_on = false;
             time = 0;
 
             if (startSweep > 0)
@@ -604,7 +598,6 @@ void MainWindow::RxData()
                 ::snprintf(buf, 3, "%02X", Ir[options.IaRange]);
                 TxString += buf;
                 sendSer(0);
-                timer_on = true;
                 timeout = PING_TIMEOUT;
             }
             else
@@ -620,8 +613,6 @@ void MainWindow::RxData()
             {
                 status = Idle;
                 ui->statusBar->showMessage("Ping OK");
-                timer_on = false;
-                timeout = PING_TIMEOUT;
             }
             break;
         }
@@ -632,8 +623,6 @@ void MainWindow::RxData()
                 saveADCInfo(&response);
                 status = Idle;
                 ui->statusBar->showMessage("Ready");
-                timer_on = false;
-                timeout = PING_TIMEOUT;
             }
             break;
         }
@@ -645,7 +634,6 @@ void MainWindow::RxData()
                 status = Heating_wait_adc;
                 TxString = "500000000000000000";
                 sendSer(38);
-                timer_on = true;
                 timeout = PING_TIMEOUT;
             }
             break;
@@ -661,7 +649,6 @@ void MainWindow::RxData()
                 ui->statusBar->showMessage("Heating");
                 TxString = "400000000000000000";
                 sendSer(0);
-                timer_on = true;
                 timeout = PING_TIMEOUT;
                 heat = 1;
             }
@@ -680,7 +667,6 @@ void MainWindow::RxData()
                 sendSer(0);
                 heat = 0;
                 timeout = PING_TIMEOUT;
-                timer_on = true;
             }
             else if (RxCode == RXSUCCESS)
             {
@@ -704,7 +690,6 @@ void MainWindow::RxData()
                 {
                     ui->HeaterProg->setValue(100);
                     status = heat_done;
-                    timer_on = false;
                 }
             }
             break;
@@ -724,7 +709,6 @@ void MainWindow::RxData()
                 sendSer(0);
                 ui->CaptureProg->setValue(0);
                 timeout = PING_TIMEOUT;
-                timer_on = true;
             }
             else if (startSweep > 0 || time / 1000 == HEAT_WAIT_SECS)
             {
@@ -750,7 +734,6 @@ void MainWindow::RxData()
                 sendSer(0);
                 ui->CaptureProg->setValue(0);
                 timeout = PING_TIMEOUT;
-                timer_on = true;
             }
             else if (delay == 0)
             {
@@ -765,7 +748,6 @@ void MainWindow::RxData()
                 VfADC = GetVf( HEAT_CNT_MAX );
                 status = Sweep_adc;
                 timeout = ADC_READ_TIMEOUT;
-                timer_on = true;
                 ::snprintf(buf, 19, "10%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC );
                 TxString= buf;
                 sendSer(38);
@@ -789,7 +771,6 @@ void MainWindow::RxData()
                     sendSer(0);
                     heat=0;
                     timeout = PING_TIMEOUT;
-                    timer_on = true;
                     break;
                 }
                 VaADC = GetVa(VaNow);
@@ -798,7 +779,6 @@ void MainWindow::RxData()
                 VfADC = GetVf(HEAT_CNT_MAX);
                 status = hold_ack;
                 timeout = ADC_READ_TIMEOUT + options.Delay;
-                timer_on = true;
                 sprintf(buf, "20%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC);
                 TxString = buf;
                 sendSer(0);
@@ -808,7 +788,6 @@ void MainWindow::RxData()
         case hold_ack:
         {
             status = hold;
-            timer_on = false;
             break;
         }
         case hold:
@@ -825,7 +804,6 @@ void MainWindow::RxData()
                 sendSer(0);
                 heat = 0;
                 timeout = PING_TIMEOUT;
-                timer_on = true;
             }
             else if (delay == 0)
             {
@@ -847,7 +825,6 @@ void MainWindow::RxData()
                     sendSer(0);
                     heat = 0;
                     timeout = PING_TIMEOUT;
-                    timer_on = true;
                     break;
                 }
 
@@ -856,7 +833,6 @@ void MainWindow::RxData()
                 VgADC = GetVg(VgNow);
                 VfADC = GetVf(HEAT_CNT_MAX);
                 timeout = ADC_READ_TIMEOUT;
-                timer_on = true;
                 sprintf(buf, "10%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC);
                 TxString = buf;
                 sendSer(38);
@@ -982,9 +958,8 @@ void MainWindow::RxData()
                     int fn = ui->AutoNumber->text().toInt(&ok);
                     ui->AutoNumber->setText(QString::number(fn + 1));
                 }
-                timer_on = true;
-
-            } else if (HV_Discharge_Timer==0)
+            }
+            else if (HV_Discharge_Timer==0)
             {
                 ui->statusBar->showMessage("Ready");
                 status=Idle;
