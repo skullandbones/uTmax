@@ -471,6 +471,7 @@ int MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response)
         timeout = 0;
 
         // For the debug window
+        TxString = pSendCmdRsp->Command;
         echoString = pSendCmdRsp->Command;
         statusString = pSendCmdRsp->Response;
 
@@ -487,6 +488,87 @@ int MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response)
 
     return rxStatus;
 }
+
+void MainWindow::SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint8_t limits, uint8_t averaging,
+                                             uint8_t screenGain, uint8_t anodeGain)
+{
+    char temp_buffer[30];
+
+    qDebug() << "Send Start Measurement command: limits:" << limits << "averaging:" << averaging \
+             << "Screen Gain:" <<  screenGain << "Anode Gain:" << anodeGain;
+
+    std::snprintf(temp_buffer, 19, "0000000000%02X%02X%02X%02X", limits, averaging, screenGain, anodeGain);
+    pSendCmdRsp->Command = temp_buffer;
+
+    pSendCmdRsp->ExpectedRspLen = 0;
+    timeout = PING_TIMEOUT;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
+void MainWindow::SendGetMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint16_t anodeV, uint16_t screenV,
+                                           uint16_t gridV, uint16_t filamentV)
+{
+    char temp_buffer[30];
+
+    qDebug() << "Send Get Measurement command: anodeV:" << anodeV << "screenV" << screenV \
+             << "gridV" << gridV << "filamentV:" << filamentV;
+
+    std::snprintf(temp_buffer, 19, "10%04X%04X%04X%04X", anodeV, screenV, gridV, filamentV);
+    pSendCmdRsp->Command = temp_buffer;
+
+    pSendCmdRsp->ExpectedRspLen = 38;
+    timeout = ADC_READ_TIMEOUT;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
+void MainWindow::SendHoldMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint16_t anodeV, uint16_t screenV,
+                                           uint16_t gridV, uint16_t filamentV, int delay)
+{
+    char temp_buffer[30];
+
+    qDebug() << "Send Hold Measurement command: anodeV:" << anodeV << "screenV" << screenV \
+             << "gridV" << gridV << "filamentV:" << filamentV << "delay" << delay;
+
+    std::snprintf(temp_buffer, 19, "20%04X%04X%04X%04X", anodeV, screenV, gridV, filamentV);
+    pSendCmdRsp->Command = temp_buffer;
+
+    pSendCmdRsp->ExpectedRspLen = 0;
+    timeout = ADC_READ_TIMEOUT + delay;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
+void MainWindow::SendEndMeasurementCommand(CommandResponse_t *pSendCmdRsp)
+{
+    qDebug() << "Send End Measurement command:";
+    pSendCmdRsp->Command = "300000000000000000";
+    pSendCmdRsp->ExpectedRspLen = 0;
+    timeout = PING_TIMEOUT;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
+void MainWindow::SendFilamentCommand(CommandResponse_t *pSendCmdRsp, uint16_t filamentV)
+{
+    char temp_buffer[30];
+
+    qDebug() << "Send Filament command: Filament:" << filamentV;
+
+    std::snprintf(temp_buffer, 19, "40000000000000%04X", filamentV);
+    pSendCmdRsp->Command = temp_buffer;
+
+    pSendCmdRsp->ExpectedRspLen = 0;
+    timeout = PING_TIMEOUT;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
+void MainWindow::SendADCCommand(CommandResponse_t *pSendCmdRsp)
+{
+    qDebug() << "Send ADC command:";
+    pSendCmdRsp->Command = "500000000000000000";
+    pSendCmdRsp->ExpectedRspLen = 38;
+    timeout = PING_TIMEOUT;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
 //---------------------------------------------
 // The main control process
 void MainWindow::RxData()
@@ -504,23 +586,19 @@ void MainWindow::RxData()
 
     if (sendADC == true)
     {
-        TxString = "500000000000000000";
         heat = 0;
-        sendSer(38);
-        sendADC = false;
+        SendADCCommand(&CmdRsp);
         status = wait_adc;
-        timeout = PING_TIMEOUT;
+        sendADC = false;
         return;
     }
 
     if (sendPing == true)
     {
-        TxString = "300000000000000000";
         heat = 0;
-        sendSer(0);
-        sendPing = false;
+        SendEndMeasurementCommand(&CmdRsp);
         status = WaitPing;
-        timeout = PING_TIMEOUT;
+        sendPing = false;
         return;
     }
 
@@ -539,9 +617,8 @@ void MainWindow::RxData()
     if (RxCode == RXTIMEOUT)
     {
         ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
-        TxString = "300000000000000000";
+        SendEndMeasurementCommand(&CmdRsp);
         response.clear();
-        sendSer(0);
         status = Idle;
         return;
     }
@@ -588,17 +665,9 @@ void MainWindow::RxData()
                 }
 
                 ui->CaptureProg->setValue(1);
-                TxString = "0000000000";
-                ::snprintf(buf, 3, "%02X", lim[options.Ilimit]);
-                TxString += buf;
-                ::snprintf(buf, 3, "%02X", avg[options.AvgNum]);
-                TxString += buf;
-                ::snprintf(buf, 3, "%02X", Ir[options.IsRange]);
-                TxString += buf;
-                ::snprintf(buf, 3, "%02X", Ir[options.IaRange]);
-                TxString += buf;
-                sendSer(0);
-                timeout = PING_TIMEOUT;
+
+                SendStartMeasurementCommand(&CmdRsp, lim[options.Ilimit], avg[options.AvgNum],
+                                            Ir[options.IsRange], Ir[options.IaRange]);
             }
             else
             {
@@ -631,10 +700,8 @@ void MainWindow::RxData()
             if (RxCode == RXSUCCESS)
             {
                 ui->statusBar->showMessage("Heating, get ADC info");
+                SendADCCommand(&CmdRsp);
                 status = Heating_wait_adc;
-                TxString = "500000000000000000";
-                sendSer(38);
-                timeout = PING_TIMEOUT;
             }
             break;
         }
@@ -647,9 +714,7 @@ void MainWindow::RxData()
                 heat = 0;
                 status = Heating;
                 ui->statusBar->showMessage("Heating");
-                TxString = "400000000000000000";
-                sendSer(0);
-                timeout = PING_TIMEOUT;
+                SendFilamentCommand(&CmdRsp, 0);
                 heat = 1;
             }
             break;
@@ -663,10 +728,8 @@ void MainWindow::RxData()
                 HV_Discharge_Timer = 0;
                 ui->HeaterProg->setValue(0);
                 ui->statusBar->showMessage("Heater off");
-                TxString = "400000000000000000";
-                sendSer(0);
+                SendFilamentCommand(&CmdRsp, 0);
                 heat = 0;
-                timeout = PING_TIMEOUT;
             }
             else if (RxCode == RXSUCCESS)
             {
@@ -680,10 +743,7 @@ void MainWindow::RxData()
                     ui->HeaterProg->setValue((100 * heat) / HEAT_CNT_MAX);
                     VfADC = GetVf((float)heat);
                     if (VfADC > 1023) VfADC = 1023;
-                    ::snprintf(buf, 19, "40000000000000%04X", VfADC);
-                    TxString = buf;
-                    timeout = PING_TIMEOUT;
-                    sendSer(0);
+                    SendFilamentCommand(&CmdRsp, (uint16_t)VfADC);
                     heat++;
                 }
                 else
@@ -705,10 +765,8 @@ void MainWindow::RxData()
                 stop = false;
                 status = HeatOff;
                 HV_Discharge_Timer = 0;
-                TxString = "400000000000000000";
-                sendSer(0);
+                SendFilamentCommand(&CmdRsp, 0);
                 ui->CaptureProg->setValue(0);
-                timeout = PING_TIMEOUT;
             }
             else if (startSweep > 0 || time / 1000 == HEAT_WAIT_SECS)
             {
@@ -730,10 +788,8 @@ void MainWindow::RxData()
                 distime = (int)(DISTIME * v / 400);
                 HV_Discharge_Timer = distime;
                 ui->statusBar->showMessage("Abort:Heater off");
-                TxString = "400000000000000000";
-                sendSer(0);
+                SendFilamentCommand(&CmdRsp, 0);
                 ui->CaptureProg->setValue(0);
-                timeout = PING_TIMEOUT;
             }
             else if (delay == 0)
             {
@@ -747,10 +803,7 @@ void MainWindow::RxData()
                 VgADC = GetVg(VgNow);
                 VfADC = GetVf( HEAT_CNT_MAX );
                 status = Sweep_adc;
-                timeout = ADC_READ_TIMEOUT;
-                ::snprintf(buf, 19, "10%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC );
-                TxString= buf;
-                sendSer(38);
+                SendGetMeasurementCommand(&CmdRsp, (uint16_t)VaADC, (uint16_t)VsADC, (uint16_t)VgADC, (uint16_t)VfADC);
             }
             else
             {
@@ -767,10 +820,8 @@ void MainWindow::RxData()
                     distime = (int)(DISTIME * v / 400);
                     HV_Discharge_Timer = distime;
                     ui->statusBar->showMessage("Abort:Heater off");
-                    TxString = "400000000000000000";
-                    sendSer(0);
+                    SendFilamentCommand(&CmdRsp, 0);
                     heat=0;
-                    timeout = PING_TIMEOUT;
                     break;
                 }
                 VaADC = GetVa(VaNow);
@@ -778,10 +829,7 @@ void MainWindow::RxData()
                 VgADC = GetVg(VgNow);
                 VfADC = GetVf(HEAT_CNT_MAX);
                 status = hold_ack;
-                timeout = ADC_READ_TIMEOUT + options.Delay;
-                sprintf(buf, "20%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC);
-                TxString = buf;
-                sendSer(0);
+                SendHoldMeasurementCommand(&CmdRsp, (uint16_t)VaADC, (uint16_t)VsADC, (uint16_t)VgADC, (uint16_t)VfADC, options.Delay);
             }
             break;
         }
@@ -800,10 +848,8 @@ void MainWindow::RxData()
                 distime = (int)(DISTIME * v / 400);
                 HV_Discharge_Timer = distime;
                 ui->statusBar->showMessage("Abort:Heater off");
-                TxString = "400000000000000000";
-                sendSer(0);
+                SendFilamentCommand(&CmdRsp, 0);
                 heat = 0;
-                timeout = PING_TIMEOUT;
             }
             else if (delay == 0)
             {
@@ -821,10 +867,8 @@ void MainWindow::RxData()
                     distime = (int)(DISTIME * v / 400);
                     HV_Discharge_Timer = distime;
                     ui->statusBar->showMessage("Abort:Heater off");
-                    TxString = "400000000000000000";
-                    sendSer(0);
+                    SendFilamentCommand(&CmdRsp, 0);
                     heat = 0;
-                    timeout = PING_TIMEOUT;
                     break;
                 }
 
@@ -832,10 +876,7 @@ void MainWindow::RxData()
                 VsADC = GetVs(VsNow);
                 VgADC = GetVg(VgNow);
                 VfADC = GetVf(HEAT_CNT_MAX);
-                timeout = ADC_READ_TIMEOUT;
-                sprintf(buf, "10%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC);
-                TxString = buf;
-                sendSer(38);
+                SendGetMeasurementCommand(&CmdRsp, (uint16_t)VaADC, (uint16_t)VsADC, (uint16_t)VgADC, (uint16_t)VfADC);
             }
             else
             {
@@ -868,8 +909,7 @@ void MainWindow::RxData()
                         distime =(int)(DISTIME * v / 400);
                         HV_Discharge_Timer =distime;
                         ui->CaptureProg->setValue(100);
-                        TxString = "400000000000000000";
-                        sendSer(0);
+                        SendFilamentCommand(&CmdRsp, 0);
                         break;
                     }
                 }
@@ -934,8 +974,7 @@ void MainWindow::RxData()
                         HV_Discharge_Timer = distime;
                         ui->statusBar->showMessage("Sweep complete");
                         ui->CaptureProg->setValue(100);
-                        TxString = "400000000000000000";
-                        sendSer(0);
+                        SendFilamentCommand(&CmdRsp, 0);
                     }
                 }
             }
@@ -946,11 +985,9 @@ void MainWindow::RxData()
             if (HV_Discharge_Timer>0) HV_Discharge_Timer--;
             if (HV_Discharge_Timer == (distime-1))
             {
-                TxString = "300000000000000000";
-                sendSer(0);
-                heat = 0;
                 ui->HeaterProg->setValue(0);
-                timeout = PING_TIMEOUT;
+                SendEndMeasurementCommand(&CmdRsp);
+                heat = 0;
                 if (ui->checkAutoNumber->isChecked())
                 {
                     if (!ui->checkQuickTest->isChecked()) on_actionSave_plot_triggered();
@@ -972,13 +1009,6 @@ void MainWindow::RxData()
             }
         }
     }
-}
-
-void MainWindow::sendSer(int ExpectedRspLen)
-{
-    CmdRsp.Command = TxString;
-    CmdRsp.ExpectedRspLen = ExpectedRspLen;
-    SendCommand(&CmdRsp, true, 0);
 }
 
 // ------------------
