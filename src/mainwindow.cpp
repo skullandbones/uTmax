@@ -502,13 +502,12 @@ void MainWindow::RxData()
     static int lim[]={0x8f, 0x8d, 0xad, 0xab, 0x84, 0xa4, 0xa2, 0xa1, 0x80, 0x00};
     static int avg[]={0x40, 1, 2, 4, 8, 16, 32, 0x40};
     static int Ir[]={8,1,2,3,4,5,6,7};
-    static QByteArray cmd;
     static QByteArray response;
     static int distime;
 
     if (sendADC == true)
     {
-        cmd = TxString = "500000000000000000";
+        TxString = "500000000000000000";
         rxLen = TxString.length() + 38;
         heat = 0;
         sendSer(38);
@@ -521,7 +520,7 @@ void MainWindow::RxData()
 
     if (sendPing == true)
     {
-        cmd = TxString = "300000000000000000";
+        TxString = "300000000000000000";
         rxLen = TxString.length();
         heat = 0;
         sendSer(0);
@@ -549,7 +548,6 @@ void MainWindow::RxData()
         ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
         TxString = "300000000000000000";
         response.clear();
-        cmd = TxString;
         rxLen = TxString.length();
         sendSer(0);
         timer_on = false;
@@ -612,7 +610,6 @@ void MainWindow::RxData()
                 TxString += buf;
                 ::snprintf(buf, 3, "%02X", Ir[options.IaRange]);
                 TxString += buf;
-                cmd = TxString;
                 rxLen = 18;
                 sendSer(0);
                 timer_on = true;
@@ -630,7 +627,6 @@ void MainWindow::RxData()
             if (RxCode == RXSUCCESS)
             {
                 rxLen = 0;
-                cmd = "";
                 status = Idle;
                 ui->statusBar->showMessage("Ping OK");
                 timer_on = false;
@@ -644,7 +640,6 @@ void MainWindow::RxData()
             {
                 saveADCInfo(&response);
                 rxLen = 0;
-                cmd = "";
                 status = Idle;
                 ui->statusBar->showMessage("Ready");
                 timer_on = false;
@@ -658,7 +653,7 @@ void MainWindow::RxData()
             {
                 ui->statusBar->showMessage("Heating, get ADC info");
                 status = Heating_wait_adc;
-                cmd = TxString = "500000000000000000";
+                TxString = "500000000000000000";
                 rxLen = TxString.length() + 38;
                 sendSer(38);
                 timer_on = true;
@@ -677,7 +672,6 @@ void MainWindow::RxData()
                 ui->statusBar->showMessage("Heating");
                 TxString = "400000000000000000";
                 rxLen = TxString.length();
-                cmd = TxString;
                 sendSer(0);
                 timer_on = true;
                 timeout = PING_TIMEOUT;
@@ -695,7 +689,6 @@ void MainWindow::RxData()
                 ui->HeaterProg->setValue(0);
                 ui->statusBar->showMessage("Heater off");
                 TxString = "400000000000000000";
-                cmd = TxString;
                 rxLen = TxString.length();
                 sendSer(0);
                 heat = 0;
@@ -717,7 +710,6 @@ void MainWindow::RxData()
                     ::snprintf(buf, 19, "40000000000000%04X", VfADC);
                     TxString = buf;
                     rxLen = TxString.length();
-                    cmd = TxString;
                     timeout = PING_TIMEOUT;
                     sendSer(0);
                     heat++;
@@ -728,7 +720,6 @@ void MainWindow::RxData()
                     status = heat_done;
                     timer_on = false;
                     rxLen = 0;
-                    cmd = "";
                 }
             }
             break;
@@ -744,7 +735,7 @@ void MainWindow::RxData()
                 stop = false;
                 status = HeatOff;
                 HV_Discharge_Timer = 0;
-                cmd=TxString = "400000000000000000";
+                TxString = "400000000000000000";
                 rxLen=TxString.length();
                 sendSer(0);
                 ui->CaptureProg->setValue(0);
@@ -756,7 +747,6 @@ void MainWindow::RxData()
                 startSweep = 0;
                 if (dataStore->length() > 0) dataStore->clear();
                 rxLen = 0;
-                cmd = "";
                 CreateTestVectors();
                 curve = 0;
                 status = Sweep_set;
@@ -773,7 +763,7 @@ void MainWindow::RxData()
                 distime = (int)(DISTIME * v / 400);
                 HV_Discharge_Timer = distime;
                 ui->statusBar->showMessage("Abort:Heater off");
-                cmd = TxString = "400000000000000000";
+                TxString = "400000000000000000";
                 rxLen = TxString.length();
                 sendSer(0);
                 ui->CaptureProg->setValue(0);
@@ -795,7 +785,7 @@ void MainWindow::RxData()
                 timeout = ADC_READ_TIMEOUT;
                 timer_on = true;
                 ::snprintf(buf, 19, "10%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC );
-                cmd = TxString= buf;
+                TxString= buf;
                 rxLen= TxString.length() + 38;
                 sendSer(38);
             }
@@ -815,7 +805,6 @@ void MainWindow::RxData()
                     HV_Discharge_Timer = distime;
                     ui->statusBar->showMessage("Abort:Heater off");
                     TxString = "400000000000000000";
-                    cmd = TxString;
                     rxLen = TxString.length();
                     sendSer(0);
                     heat=0;
@@ -831,7 +820,7 @@ void MainWindow::RxData()
                 timeout = ADC_READ_TIMEOUT + options.Delay;
                 timer_on = true;
                 sprintf(buf, "20%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC);
-                cmd = TxString = buf;
+                TxString = buf;
                 rxLen = TxString.length();
                 sendSer(0);
             }
@@ -842,7 +831,6 @@ void MainWindow::RxData()
             status = hold;
             timer_on = false;
             rxLen = 0;
-            cmd = "";
             break;
         }
         case hold:
@@ -856,7 +844,6 @@ void MainWindow::RxData()
                 HV_Discharge_Timer = distime;
                 ui->statusBar->showMessage("Abort:Heater off");
                 TxString = "400000000000000000";
-                cmd = TxString;
                 rxLen = TxString.length();
                 sendSer(0);
                 heat = 0;
@@ -880,7 +867,6 @@ void MainWindow::RxData()
                     HV_Discharge_Timer = distime;
                     ui->statusBar->showMessage("Abort:Heater off");
                     TxString = "400000000000000000";
-                    cmd = TxString;
                     rxLen = TxString.length();
                     sendSer(0);
                     heat = 0;
@@ -896,7 +882,7 @@ void MainWindow::RxData()
                 timeout = ADC_READ_TIMEOUT;
                 timer_on = true;
                 sprintf(buf, "10%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC);
-                cmd = TxString = buf;
+                TxString = buf;
                 rxLen = TxString.length() + 38;
                 sendSer(38);
             }
@@ -906,7 +892,6 @@ void MainWindow::RxData()
                 delay--;
                 status = hold;
                 rxLen = 0;
-                cmd = "";
             }
             break;
         }
@@ -934,7 +919,6 @@ void MainWindow::RxData()
                         HV_Discharge_Timer =distime;
                         ui->CaptureProg->setValue(100);
                         TxString = "400000000000000000";
-                        cmd = TxString;
                         rxLen = TxString.length();
                         sendSer(0);
                         break;
@@ -983,7 +967,6 @@ void MainWindow::RxData()
                     status = Sweep_set;
                     timeout = ADC_READ_TIMEOUT;
                     rxLen = 0;
-                    cmd = "";
                 }
                 else
                 {
@@ -1004,7 +987,6 @@ void MainWindow::RxData()
                         ui->statusBar->showMessage("Sweep complete");
                         ui->CaptureProg->setValue(100);
                         TxString = "400000000000000000";
-                        cmd = TxString;
                         rxLen = TxString.length();
                         sendSer(0);
                     }
@@ -1017,7 +999,7 @@ void MainWindow::RxData()
             if (HV_Discharge_Timer>0) HV_Discharge_Timer--;
             if (HV_Discharge_Timer == (distime-1))
             {
-                cmd = TxString = "300000000000000000";
+                TxString = "300000000000000000";
                 rxLen = TxString.length();
                 sendSer(0);
                 heat = 0;
