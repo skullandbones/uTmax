@@ -283,7 +283,6 @@ private:
     int GetVs(float);
     int GetVg(float);
     int GetVf(float);
-    void sendSer(int ExpectedRspLen);
     void StoreData(bool);
     void SetUpPlot();
     bool SetUpSweepParams();
@@ -296,5 +295,14 @@ private:
     void StopTheMachine();
     int RxPkt(QByteArray *pResponse);
     void SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar);
+    void SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint8_t limits, uint8_t averaging,
+                                     uint8_t screenGain, uint8_t anodeGain);
+    void SendGetMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint16_t anodeV, uint16_t screenV,
+                                   uint16_t gridV, uint16_t filamentV);
+    void SendHoldMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint16_t anodeV, uint16_t screenV,
+                                    uint16_t gridV, uint16_t filamentV, int delay);
+    void SendEndMeasurementCommand(CommandResponse_t *pSendCmdRsp);
+    void SendFilamentCommand(CommandResponse_t *pSendCmdRsp, uint16_t filament);
+    void SendADCCommand(CommandResponse_t *pSendCmdRsp);
 };
 #endif // MAINWINDOW_H
