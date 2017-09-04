@@ -204,7 +204,6 @@ private:
     QTimer *timer;
     bool ok;
     bool newMessage;
-    QByteArray RxString;
     float Vdi;
     float power;
 
@@ -285,7 +284,7 @@ private:
     int GetVs(float);
     int GetVg(float);
     int GetVf(float);
-    void sendSer();
+    void sendSer(int ExpectedRspLen);
     void StoreData(bool);
     void SetUpPlot();
     bool SetUpSweepParams();
@@ -296,6 +295,7 @@ private:
     bool SaveTubeDataFile();
     void StartUpMachine();
     void StopTheMachine();
-    int RxPkt(int len, QByteArray *pCmd, QByteArray *pResponse);
+    int RxPkt(QByteArray *pResponse);
+    void SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar);
 };
 #endif // MAINWINDOW_H

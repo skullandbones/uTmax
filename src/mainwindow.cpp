@@ -319,46 +319,170 @@ void MainWindow::StopTheMachine()
     }
 }
 
-void MainWindow::readData()
+// Temporarily file global
+CommandResponse_t CmdRsp;
+
+void MainWindow::SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar)
 {
-    if (portInUse) RxString.append(portInUse->readAll());
+    static CommandResponse_t *pSendCmdRsp = NULL;
+    QByteArray txChar;
+
+    if (txLoad)
+    {
+        pSendCmdRsp = pCmdRsp;
+        pSendCmdRsp->txState = TxLoaded;
+    }
+
+    switch (pSendCmdRsp->txState)
+    {
+        case TxLoaded:
+        {
+            pSendCmdRsp->txPos = 0;
+            pSendCmdRsp->rxPos = 0;
+            pSendCmdRsp->Response.clear();
+            qDebug() << "SendCommand: TX loaded, Cmd len:" << pSendCmdRsp->Command.length() \
+                     << "Expected Response len:" << pSendCmdRsp->ExpectedRspLen;
+
+            // Transmit the first character
+            txChar.append(pSendCmdRsp->Command.at(pSendCmdRsp->txPos));
+            qDebug() << "SendCommand: send char:" << txChar;
+            if (portInUse) portInUse->write(txChar);
+            pSendCmdRsp->txState = TxSending;
+            pSendCmdRsp->rxState = RxIdle;
+            break;
+        }
+        case TxSending:
+        {
+            // Check TX was echoed OK
+            if (rxChar == pSendCmdRsp->Command.at(pSendCmdRsp->txPos))
+            {
+                pSendCmdRsp->rxState = RxEchoed;
+                qDebug() << "SendCommand: RX Echo:" << rxChar;
+            }
+            else
+            {
+                pSendCmdRsp->rxState = RxEchoError;
+                qDebug() << "ERROR: SendCommand: Echo failed:" << rxChar;
+                pSendCmdRsp->txState = TxIdle;
+                break;
+            }
+
+            pSendCmdRsp->txPos++;
+
+            if (pSendCmdRsp->txPos < pSendCmdRsp->Command.length())
+            {
+                // Transmit the next character
+                txChar.append(pSendCmdRsp->Command.at(pSendCmdRsp->txPos));
+                qDebug() << "SendCommand: send char:" << txChar;
+                if (portInUse) portInUse->write(txChar);
+            }
+            else
+            {
+                if (pSendCmdRsp->rxPos == pSendCmdRsp->ExpectedRspLen)
+                {
+                    // No response message was expected
+                    qDebug() << "SendCommand: RX response: None";
+                    pSendCmdRsp->rxState = RxComplete;
+                    pSendCmdRsp->txState = TxComplete;
+                }
+                else
+                {
+                    // Now receiving the RX response message
+                    qDebug() << "SendCommand: RX response: Wait for message";
+                    pSendCmdRsp->rxState = RxResponse;
+                    pSendCmdRsp->txState = TxRxing;
+                }
+            }
+            break;
+        }
+        case TxRxing:
+        {
+            if (pSendCmdRsp->rxPos < pSendCmdRsp->ExpectedRspLen)
+            {
+                // Receiving the RX response message
+                qDebug() << "SendCommand: RX response:" << rxChar;
+                pSendCmdRsp->Response.append(rxChar);
+                pSendCmdRsp->rxState = RxResponse;
+                pSendCmdRsp->rxPos++;
+            }
+            if (pSendCmdRsp->rxPos == pSendCmdRsp->ExpectedRspLen)
+            {
+                // Received the complete RX response message
+                qDebug() << "SendCommand: RX response: Complete";
+                pSendCmdRsp->rxState = RxComplete;
+                pSendCmdRsp->txState = TxComplete;
+            }
+            break;
+        }
+        default:
+        {
+            qDebug() << "ERROR: SendCommand: Unknown TX state:" << pSendCmdRsp->txState;
+        }
+    }
 }
 
-int MainWindow::RxPkt(int len, QByteArray *cmd, QByteArray *response)
+void MainWindow::readData()
 {
-    if (len==0) return RXCONTINUE;
-    timeout--;
-    if (timeout == 0)
+    char rxChar;
+
+    if (portInUse)
     {
-        RxString.clear();
+        while (portInUse->bytesAvailable())
+        {
+            rxChar = portInUse->read(1).at(0);
+            SendCommand(NULL, false, rxChar);
+        }
+    }
+}
+
+int MainWindow::RxPkt(QByteArray *response)
+{
+    int rxStatus = RXCONTINUE;
+    // Temporary
+    CommandResponse_t *pSendCmdRsp = &CmdRsp;
+
+    if (timeout)
+    {
+        timeout--;
+
+        if (timeout == 0)
+        {
+            qDebug() << "RxPkt: TIMEOUT - try reading for missing RX";
+            readData();
+
+            rxStatus = RXTIMEOUT;
+        }
+    }
+
+    if (pSendCmdRsp->rxState == RxComplete)
+    {
+        if (pSendCmdRsp->Response.length())
+        {
+            qDebug() << "RxPkt: Processing RX response:" << pSendCmdRsp->Response;
+            *response = pSendCmdRsp->Response;
+        }
+
+        pSendCmdRsp->txState = TxIdle;
+        pSendCmdRsp->rxState = RxIdle;
+
+        timeout = 0;
+
+        // For the debug window
+        echoString = pSendCmdRsp->Command;
+        statusString = pSendCmdRsp->Response;
+
+        rxStatus = RXSUCCESS;
+    }
+
+    if (rxStatus == RXTIMEOUT)
+    {
+        // Failed to recover, so abandon the command / response
         response->clear();
-        qDebug() << "RxPkt: TIMEOUT";
-        return RXTIMEOUT;
+        pSendCmdRsp->txState = TxIdle;
+        pSendCmdRsp->rxState = RxIdle;
     }
-    if (RxString.length() >= len)
-    {
-        if ((cmd->length() == 0) || RxString.startsWith(*cmd))
-        {
-            *response = RxString.mid(cmd->length(), len);
-            RxString.clear();
-            if (len == 18) echoString = TxString;
-            if (len == 38 + 18)
-            {
-                echoString = TxString;
-                statusString = response->constData();
-            }
-            cmd->clear();
-            return RXSUCCESS;
-        }
-        else
-        {
-            qDebug() << "RxPkt: reply invalid=" << RxString;
-            RxString.clear();
-            response->clear();
-            return RXINVALID;
-        }
-    }
-    return RXCONTINUE;
+
+    return rxStatus;
 }
 //---------------------------------------------
 // The main control process
@@ -366,24 +490,21 @@ void MainWindow::RxData()
 {
     static int time;
     static int delay;
-    static int rxLen;
     static int HV_Discharge_Timer;
     char buf[30];
     //I Limits         200,  175,  150,  125, 100,    50,   25,   12,  7mA,  Off
     static int lim[]={0x8f, 0x8d, 0xad, 0xab, 0x84, 0xa4, 0xa2, 0xa1, 0x80, 0x00};
     static int avg[]={0x40, 1, 2, 4, 8, 16, 32, 0x40};
     static int Ir[]={8,1,2,3,4,5,6,7};
-    static QByteArray cmd;
     static QByteArray response;
     static int distime;
 
     if (sendADC == true)
     {
         qDebug() << "RxData: Action sendADC";
-        cmd = TxString = "500000000000000000";
-        rxLen = TxString.length() + 38;
+        TxString = "500000000000000000";
         heat = 0;
-        sendSer();
+        sendSer(38);
         sendADC = false;
         status = wait_adc;
         timeout = PING_TIMEOUT;
@@ -394,10 +515,9 @@ void MainWindow::RxData()
     if (sendPing == true)
     {
         qDebug() << "RxData: Action sendPing";
-        cmd = TxString = "300000000000000000";
-        rxLen = TxString.length();
+        TxString = "300000000000000000";
         heat = 0;
-        sendSer();
+        sendSer(0);
         sendPing = false;
         status = WaitPing;
         timeout = PING_TIMEOUT;
@@ -415,7 +535,7 @@ void MainWindow::RxData()
 
     // ---------------------------------------------------
     // Check for the uTracer response
-    int RxCode = RxPkt(rxLen, &cmd, &response);
+    int RxCode = RxPkt(&response);
     // Check for timeout
     if (RxCode == RXTIMEOUT && timer_on)
     {
@@ -423,9 +543,7 @@ void MainWindow::RxData()
         ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
         TxString = "300000000000000000";
         response.clear();
-        cmd = TxString;
-        rxLen = TxString.length();
-        sendSer();
+        sendSer(0);
         timer_on = false;
         status = Idle;
         return;
@@ -437,7 +555,6 @@ void MainWindow::RxData()
         qDebug() << "RxData: Action RxCode RXINVALID";
         ui->statusBar->showMessage("Unexpected response from uTracer; power cycle and restart");
         response.clear();
-        rxLen = 0;
         timer_on = false;
         status = Idle;
         return;
@@ -452,7 +569,6 @@ void MainWindow::RxData()
     {
         case Idle:
         {
-            rxLen = 0;
             timer_on = false;
             time = 0;
 
@@ -489,9 +605,7 @@ void MainWindow::RxData()
                 TxString += buf;
                 ::snprintf(buf, 3, "%02X", Ir[options.IaRange]);
                 TxString += buf;
-                cmd = TxString;
-                rxLen = 18;
-                sendSer();
+                sendSer(0);
                 timer_on = true;
                 timeout = PING_TIMEOUT;
             }
@@ -506,8 +620,6 @@ void MainWindow::RxData()
         {
             if (RxCode == RXSUCCESS)
             {
-                rxLen = 0;
-                cmd = "";
                 status = Idle;
                 ui->statusBar->showMessage("Ping OK");
                 timer_on = false;
@@ -520,8 +632,6 @@ void MainWindow::RxData()
             if (RxCode == RXSUCCESS)
             {
                 saveADCInfo(&response);
-                rxLen = 0;
-                cmd = "";
                 status = Idle;
                 ui->statusBar->showMessage("Ready");
                 timer_on = false;
@@ -535,9 +645,8 @@ void MainWindow::RxData()
             {
                 ui->statusBar->showMessage("Heating, get ADC info");
                 status = Heating_wait_adc;
-                cmd = TxString = "500000000000000000";
-                rxLen = TxString.length() + 38;
-                sendSer();
+                TxString = "500000000000000000";
+                sendSer(38);
                 timer_on = true;
                 timeout = PING_TIMEOUT;
             }
@@ -553,9 +662,7 @@ void MainWindow::RxData()
                 status = Heating;
                 ui->statusBar->showMessage("Heating");
                 TxString = "400000000000000000";
-                rxLen = TxString.length();
-                cmd = TxString;
-                sendSer();
+                sendSer(0);
                 timer_on = true;
                 timeout = PING_TIMEOUT;
                 heat = 1;
@@ -572,9 +679,7 @@ void MainWindow::RxData()
                 ui->HeaterProg->setValue(0);
                 ui->statusBar->showMessage("Heater off");
                 TxString = "400000000000000000";
-                cmd = TxString;
-                rxLen = TxString.length();
-                sendSer();
+                sendSer(0);
                 heat = 0;
                 timeout = PING_TIMEOUT;
                 timer_on = true;
@@ -593,20 +698,15 @@ void MainWindow::RxData()
                     if (VfADC > 1023) VfADC = 1023;
                     ::snprintf(buf, 19, "40000000000000%04X", VfADC);
                     TxString = buf;
-                    rxLen = TxString.length();
-                    cmd = TxString;
                     timeout = PING_TIMEOUT;
-                    sendSer();
+                    sendSer(0);
                     heat++;
                 }
                 else
                 {
                     ui->HeaterProg->setValue(100);
-                    timeout = PING_TIMEOUT;
                     status = heat_done;
                     timer_on = false;
-                    rxLen = 0;
-                    cmd = "";
                 }
             }
             break;
@@ -622,9 +722,8 @@ void MainWindow::RxData()
                 stop = false;
                 status = HeatOff;
                 HV_Discharge_Timer = 0;
-                cmd=TxString = "400000000000000000";
-                rxLen=TxString.length();
-                sendSer();
+                TxString = "400000000000000000";
+                sendSer(0);
                 ui->CaptureProg->setValue(0);
                 timeout = PING_TIMEOUT;
                 timer_on = true;
@@ -633,8 +732,6 @@ void MainWindow::RxData()
             {
                 startSweep = 0;
                 if (dataStore->length() > 0) dataStore->clear();
-                rxLen = 0;
-                cmd = "";
                 CreateTestVectors();
                 curve = 0;
                 status = Sweep_set;
@@ -651,9 +748,8 @@ void MainWindow::RxData()
                 distime = (int)(DISTIME * v / 400);
                 HV_Discharge_Timer = distime;
                 ui->statusBar->showMessage("Abort:Heater off");
-                cmd = TxString = "400000000000000000";
-                rxLen = TxString.length();
-                sendSer();
+                TxString = "400000000000000000";
+                sendSer(0);
                 ui->CaptureProg->setValue(0);
                 timeout = PING_TIMEOUT;
                 timer_on = true;
@@ -673,9 +769,8 @@ void MainWindow::RxData()
                 timeout = ADC_READ_TIMEOUT;
                 timer_on = true;
                 ::snprintf(buf, 19, "10%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC );
-                cmd = TxString= buf;
-                rxLen= TxString.length() + 38;
-                sendSer();
+                TxString= buf;
+                sendSer(38);
             }
             else
             {
@@ -693,9 +788,7 @@ void MainWindow::RxData()
                     HV_Discharge_Timer = distime;
                     ui->statusBar->showMessage("Abort:Heater off");
                     TxString = "400000000000000000";
-                    cmd = TxString;
-                    rxLen = TxString.length();
-                    sendSer();
+                    sendSer(0);
                     heat=0;
                     timeout = PING_TIMEOUT;
                     timer_on = true;
@@ -709,9 +802,8 @@ void MainWindow::RxData()
                 timeout = ADC_READ_TIMEOUT + options.Delay;
                 timer_on = true;
                 sprintf(buf, "20%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC);
-                cmd = TxString = buf;
-                rxLen = TxString.length();
-                sendSer();
+                TxString = buf;
+                sendSer(0);
             }
             break;
         }
@@ -719,8 +811,6 @@ void MainWindow::RxData()
         {
             status = hold;
             timer_on = false;
-            rxLen = 0;
-            cmd = "";
             break;
         }
         case hold:
@@ -734,9 +824,7 @@ void MainWindow::RxData()
                 HV_Discharge_Timer = distime;
                 ui->statusBar->showMessage("Abort:Heater off");
                 TxString = "400000000000000000";
-                cmd = TxString;
-                rxLen = TxString.length();
-                sendSer();
+                sendSer(0);
                 heat = 0;
                 timeout = PING_TIMEOUT;
                 timer_on = true;
@@ -758,9 +846,7 @@ void MainWindow::RxData()
                     HV_Discharge_Timer = distime;
                     ui->statusBar->showMessage("Abort:Heater off");
                     TxString = "400000000000000000";
-                    cmd = TxString;
-                    rxLen = TxString.length();
-                    sendSer();
+                    sendSer(0);
                     heat = 0;
                     timeout = PING_TIMEOUT;
                     timer_on = true;
@@ -774,17 +860,14 @@ void MainWindow::RxData()
                 timeout = ADC_READ_TIMEOUT;
                 timer_on = true;
                 sprintf(buf, "10%04X%04X%04X%04X", VaADC, VsADC, VgADC, VfADC);
-                cmd = TxString = buf;
-                rxLen = TxString.length() + 38;
-                sendSer();
+                TxString = buf;
+                sendSer(38);
             }
             else
             {
                 ui->statusBar->showMessage("Sweep (Holding)");
                 delay--;
                 status = hold;
-                rxLen = 0;
-                cmd = "";
             }
             break;
         }
@@ -808,9 +891,7 @@ void MainWindow::RxData()
                         HV_Discharge_Timer =distime;
                         ui->CaptureProg->setValue(100);
                         TxString = "400000000000000000";
-                        cmd = TxString;
-                        rxLen = TxString.length();
-                        sendSer();
+                        sendSer(0);
                         break;
                     }
                 }
@@ -849,8 +930,6 @@ void MainWindow::RxData()
                     delay = options.Delay;
                     status = Sweep_set;
                     timeout = ADC_READ_TIMEOUT;
-                    rxLen = 0;
-                    cmd = "";
                 }
                 else
                 {
@@ -869,9 +948,7 @@ void MainWindow::RxData()
                         ui->statusBar->showMessage("Sweep complete");
                         ui->CaptureProg->setValue(100);
                         TxString = "400000000000000000";
-                        cmd = TxString;
-                        rxLen = TxString.length();
-                        sendSer();
+                        sendSer(0);
                     }
                 }
             }
@@ -882,9 +959,8 @@ void MainWindow::RxData()
             if (HV_Discharge_Timer>0) HV_Discharge_Timer--;
             if (HV_Discharge_Timer == (distime-1))
             {
-                cmd = TxString = "300000000000000000";
-                rxLen = TxString.length();
-                sendSer();
+                TxString = "300000000000000000";
+                sendSer(0);
                 heat = 0;
                 ui->HeaterProg->setValue(0);
                 timeout = PING_TIMEOUT;
@@ -912,12 +988,11 @@ void MainWindow::RxData()
     }
 }
 
-void MainWindow::sendSer()
+void MainWindow::sendSer(int ExpectedRspLen)
 {
-    //qDebug() << "Tx:" << TxString;
-    //while (!serQueue.isEmpty()) {serQueue.dequeue();}
-    //RxString.clear();
-    if (portInUse) portInUse->write(TxString);
+    CmdRsp.Command = TxString;
+    CmdRsp.ExpectedRspLen = ExpectedRspLen;
+    SendCommand(&CmdRsp, true, 0);
 }
 
 // ------------------
