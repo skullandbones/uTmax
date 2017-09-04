@@ -436,7 +436,6 @@ void MainWindow::readData()
         while (portInUse->bytesAvailable())
         {
             rxChar = portInUse->read(1).at(0);
-            RxString.append(rxChar);
             SendCommand(NULL, false, rxChar);
         }
     }
