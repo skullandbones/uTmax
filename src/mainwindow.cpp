@@ -147,6 +147,11 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->Tabs->setCurrentIndex(0);
     //
     optimizer = new dr_optimize();
+
+    // Initalise the command response structure
+    CmdRsp.txState = TxIdle;
+    CmdRsp.rxState = RxIdle;
+    CmdRsp.timeout = 0;
 }
 
 MainWindow::~MainWindow()
@@ -323,9 +328,6 @@ void MainWindow::StopTheMachine()
     }
 }
 
-// Temporarily file global
-CommandResponse_t CmdRsp;
-
 void MainWindow::SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar)
 {
     static CommandResponse_t *pSendCmdRsp = NULL;
@@ -440,11 +442,9 @@ void MainWindow::readData()
     }
 }
 
-int MainWindow::RxPkt(QByteArray *response)
+int MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response)
 {
     int rxStatus = RXCONTINUE;
-    // Temporary
-    CommandResponse_t *pSendCmdRsp = &CmdRsp;
 
     if (timeout)
     {
@@ -542,7 +542,7 @@ void MainWindow::RxData()
 
     // ---------------------------------------------------
     // Check for the uTracer response
-    int RxCode = RxPkt(&response);
+    int RxCode = RxPkt(&CmdRsp, &response);
     // Check for timeout
     if (RxCode == RXTIMEOUT && timer_on)
     {
