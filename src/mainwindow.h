@@ -196,7 +196,6 @@ private:
     int curve;
     int heat;
     bool stop;
-    int timeout;
     QTimer *timer;
     bool ok;
     bool newMessage;
@@ -298,6 +297,7 @@ private:
         QByteArray Response;
         int rxPos;
         RxState_t rxState;
+        int timeout;
     };
 
     CommandResponse_t CmdRsp;
