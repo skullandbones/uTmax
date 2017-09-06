@@ -94,7 +94,6 @@ MainWindow::MainWindow(QWidget *parent) :
     status=Idle;
     startSweep=0;
     stop=false;
-    timeout=PING_TIMEOUT;
     timer=NULL;
     newMessage=false;
     sendADC=false;
@@ -440,11 +439,11 @@ int MainWindow::RxPkt(QByteArray *response)
     // Temporary
     CommandResponse_t *pSendCmdRsp = &CmdRsp;
 
-    if (timeout)
+    if (pSendCmdRsp->timeout)
     {
-        timeout--;
+        pSendCmdRsp->timeout--;
 
-        if (timeout == 0)
+        if (pSendCmdRsp->timeout == 0)
         {
             qDebug() << "RxPkt: TIMEOUT - try reading for missing RX";
             readData();
@@ -464,7 +463,7 @@ int MainWindow::RxPkt(QByteArray *response)
         pSendCmdRsp->txState = TxIdle;
         pSendCmdRsp->rxState = RxIdle;
 
-        timeout = 0;
+        pSendCmdRsp->timeout = 0;
 
         // For the debug window
         TxString = pSendCmdRsp->Command;
@@ -497,7 +496,7 @@ void MainWindow::SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uin
     pSendCmdRsp->Command = temp_buffer;
 
     pSendCmdRsp->ExpectedRspLen = 0;
-    timeout = PING_TIMEOUT;
+    pSendCmdRsp->timeout = PING_TIMEOUT;
     SendCommand(pSendCmdRsp, true, 0);
 }
 
@@ -513,7 +512,7 @@ void MainWindow::SendGetMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint1
     pSendCmdRsp->Command = temp_buffer;
 
     pSendCmdRsp->ExpectedRspLen = 38;
-    timeout = ADC_READ_TIMEOUT;
+    pSendCmdRsp->timeout = ADC_READ_TIMEOUT;
     SendCommand(pSendCmdRsp, true, 0);
 }
 
@@ -529,7 +528,7 @@ void MainWindow::SendHoldMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint
     pSendCmdRsp->Command = temp_buffer;
 
     pSendCmdRsp->ExpectedRspLen = 0;
-    timeout = ADC_READ_TIMEOUT + delay;
+    pSendCmdRsp->timeout = ADC_READ_TIMEOUT + delay;
     SendCommand(pSendCmdRsp, true, 0);
 }
 
@@ -538,7 +537,7 @@ void MainWindow::SendEndMeasurementCommand(CommandResponse_t *pSendCmdRsp)
     qDebug() << "Send End Measurement command:";
     pSendCmdRsp->Command = "300000000000000000";
     pSendCmdRsp->ExpectedRspLen = 0;
-    timeout = PING_TIMEOUT;
+    pSendCmdRsp->timeout = PING_TIMEOUT;
     SendCommand(pSendCmdRsp, true, 0);
 }
 
@@ -552,7 +551,7 @@ void MainWindow::SendFilamentCommand(CommandResponse_t *pSendCmdRsp, uint16_t fi
     pSendCmdRsp->Command = temp_buffer;
 
     pSendCmdRsp->ExpectedRspLen = 0;
-    timeout = PING_TIMEOUT;
+    pSendCmdRsp->timeout = PING_TIMEOUT;
     SendCommand(pSendCmdRsp, true, 0);
 }
 
@@ -561,7 +560,7 @@ void MainWindow::SendADCCommand(CommandResponse_t *pSendCmdRsp)
     qDebug() << "Send ADC command:";
     pSendCmdRsp->Command = "500000000000000000";
     pSendCmdRsp->ExpectedRspLen = 38;
-    timeout = PING_TIMEOUT;
+    pSendCmdRsp->timeout = PING_TIMEOUT;
     SendCommand(pSendCmdRsp, true, 0);
 }
 
@@ -945,7 +944,6 @@ void MainWindow::RxData()
                     ui->statusBar->showMessage(msg);
                     delay = options.Delay;
                     status = Sweep_set;
-                    timeout = ADC_READ_TIMEOUT;
                 }
                 else
                 {
@@ -992,7 +990,6 @@ void MainWindow::RxData()
             }
             else
             {
-                timeout = PING_TIMEOUT;
                 QString msg = QString("Countdown for HV to discharge: %1").arg(HV_Discharge_Timer);
                 ui->statusBar->showMessage(msg);
             }

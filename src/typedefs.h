@@ -90,6 +90,7 @@ struct CommandResponse_t
     QByteArray Response;
     int rxPos;
     RxState_t rxState;
+    int timeout;
 };
 
 #endif // TYPEDEFS_H
