@@ -270,6 +270,38 @@ private:
 
     QSerialPort *portInUse;
 
+    enum RxState_t
+    {
+        RxIdle,
+        RxEchoed,
+        RxEchoError,
+        RxResponse,
+        RxComplete
+    };
+
+    enum TxState_t
+    {
+        TxIdle,
+        TxLoaded,
+        TxSending,
+        TxRxing,
+        TxComplete
+    };
+
+    struct CommandResponse_t
+    {
+        QByteArray Command;
+        int txPos;
+        TxState_t txState;
+        int ExpectedRspLen;
+        QByteArray Response;
+        int rxPos;
+        RxState_t rxState;
+        int timeout;
+    };
+
+    CommandResponse_t CmdRsp;
+
     // Function protoypes
     void PenUpdate();
     void updateLcdsWithModel();
@@ -292,7 +324,7 @@ private:
     bool SaveTubeDataFile();
     void StartUpMachine();
     void StopTheMachine();
-    int RxPkt(QByteArray *pResponse);
+    int RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response);
     void SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar);
     void SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint8_t limits, uint8_t averaging,
                                      uint8_t screenGain, uint8_t anodeGain);

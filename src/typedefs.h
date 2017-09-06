@@ -60,37 +60,4 @@ enum Operation_t
     Start
 };
 
-// Temporarily global
-enum RxState_t
-{
-    RxIdle,
-    RxEchoed,
-    RxEchoError,
-    RxResponse,
-    RxComplete
-};
-
-// Temporarily global
-enum TxState_t
-{
-    TxIdle,
-    TxLoaded,
-    TxSending,
-    TxRxing,
-    TxComplete
-};
-
-// Temporarily global
-struct CommandResponse_t
-{
-    QByteArray Command;
-    int txPos;
-    TxState_t txState;
-    int ExpectedRspLen;
-    QByteArray Response;
-    int rxPos;
-    RxState_t rxState;
-    int timeout;
-};
-
 #endif // TYPEDEFS_H
