@@ -582,6 +582,7 @@ void MainWindow::RxData()
     static int Ir[]={8,1,2,3,4,5,6,7};
     static QByteArray response;
     static int distime;
+    int RxCode;
 
     // ---------------------------------------------------
     // Sanity check that the port is still OK
@@ -599,6 +600,30 @@ void MainWindow::RxData()
         return;
     }
 
+    // ---------------------------------------------------
+    // Check for the uTracer response
+    RxCode = RxPkt(&CmdRsp, &response);
+    // Check for timeout
+    if (RxCode == RXTIMEOUT)
+    {
+        qDebug() << "RxData: Action RxCode RXTIMEOUT";
+        ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
+        status = Idle;
+        StopTheMachine();
+        return;
+    }
+
+    // Check for invalid response
+    if (RxCode == RXINVALID)
+    {
+        qDebug() << "RxData: Action RxCode RXINVALID";
+        ui->statusBar->showMessage("Unexpected response from uTracer; power cycle and restart");
+        status = Idle;
+        StopTheMachine();
+        return;
+    }
+
+    // ---------------------------------------------------
     if (sendADC == true)
     {
         qDebug() << "RxData: Action sendADC";
@@ -616,30 +641,6 @@ void MainWindow::RxData()
         SendEndMeasurementCommand(&CmdRsp);
         status = WaitPing;
         sendPing = false;
-        return;
-    }
-
-    // ---------------------------------------------------
-    // Check for the uTracer response
-    int RxCode = RxPkt(&CmdRsp, &response);
-    // Check for timeout
-    if (RxCode == RXTIMEOUT)
-    {
-        qDebug() << "RxData: Action RxCode RXTIMEOUT";
-        ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
-        SendEndMeasurementCommand(&CmdRsp);
-        response.clear();
-        status = Idle;
-        return;
-    }
-
-    // Check for invalid rsponse
-    if (RxCode == RXINVALID)
-    {
-        qDebug() << "RxData: Action RxCode RXINVALID";
-        ui->statusBar->showMessage("Unexpected response from uTracer; power cycle and restart");
-        response.clear();
-        status = Idle;
         return;
     }
 
