@@ -439,9 +439,9 @@ void MainWindow::readData()
     }
 }
 
-int MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response)
+void MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response, RxStatus_t *pRxStatus)
 {
-    int rxStatus = RXCONTINUE;
+    *pRxStatus = RXCONTINUE;
 
     if (pSendCmdRsp->timeout)
     {
@@ -452,8 +452,13 @@ int MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response)
             qDebug() << "RxPkt: TIMEOUT - try reading for missing RX";
             readData();
 
-            rxStatus = RXTIMEOUT;
+            *pRxStatus = RXTIMEOUT;
         }
+    }
+    else
+    {
+        qDebug() << "RxPkt: RXIDLE";
+        *pRxStatus = RXIDLE;
     }
 
     if (pSendCmdRsp->rxState == RxComplete)
@@ -474,18 +479,17 @@ int MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response)
         echoString = pSendCmdRsp->Command;
         statusString = pSendCmdRsp->Response;
 
-        rxStatus = RXSUCCESS;
+        *pRxStatus = RXSUCCESS;
     }
 
-    if (rxStatus == RXTIMEOUT)
+    if (*pRxStatus == RXTIMEOUT)
     {
         // Failed to recover, so abandon the command / response
+        qDebug() << "RxPkt: TIMEOUT - failed to recover";
         response->clear();
         pSendCmdRsp->txState = TxIdle;
         pSendCmdRsp->rxState = RxIdle;
     }
-
-    return rxStatus;
 }
 
 void MainWindow::SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint8_t limits, uint8_t averaging,
@@ -582,7 +586,7 @@ void MainWindow::RxData()
     static int Ir[]={8,1,2,3,4,5,6,7};
     static QByteArray response;
     static int distime;
-    int RxCode;
+    RxStatus_t RxCode;
 
     // ---------------------------------------------------
     // Sanity check that the port is still OK
@@ -602,7 +606,7 @@ void MainWindow::RxData()
 
     // ---------------------------------------------------
     // Check for the uTracer response
-    RxCode = RxPkt(&CmdRsp, &response);
+    RxPkt(&CmdRsp, &response, &RxCode);
     // Check for timeout
     if (RxCode == RXTIMEOUT)
     {
