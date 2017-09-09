@@ -583,6 +583,22 @@ void MainWindow::RxData()
     static QByteArray response;
     static int distime;
 
+    // ---------------------------------------------------
+    // Sanity check that the port is still OK
+    if (!portInUse)
+    {
+        ui->statusBar->showMessage("ERROR: The serial port is not available");
+        StopTheMachine();
+        return;
+    }
+
+    if (portInUse && !portInUse->isOpen())
+    {
+        ui->statusBar->showMessage("ERROR: The serial port closed unexpectedly!");
+        StopTheMachine();
+        return;
+    }
+
     if (sendADC == true)
     {
         qDebug() << "RxData: Action sendADC";
@@ -600,14 +616,6 @@ void MainWindow::RxData()
         SendEndMeasurementCommand(&CmdRsp);
         status = WaitPing;
         sendPing = false;
-        return;
-    }
-
-    // ---------------------------------------------------
-    // Sanity check that the port is still OK
-    if (!portInUse || !portInUse->isOpen())
-    {
-        ui->statusBar->showMessage("COM port was closed, exit and restart.");
         return;
     }
 
