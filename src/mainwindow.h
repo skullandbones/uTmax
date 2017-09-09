@@ -4,10 +4,7 @@
 #define TIMER_SET 500
 #define ADC_READ_TIMEOUT (30000/TIMER_SET)
 #define PING_TIMEOUT (5000/TIMER_SET)
-#define RXSUCCESS 1
-#define RXTIMEOUT -1
-#define RXCONTINUE 0
-#define RXINVALID -2
+
 #define HEAT_CNT_MAX 20
 #define HEAT_WAIT_SECS 60
 
@@ -302,6 +299,15 @@ private:
 
     CommandResponse_t CmdRsp;
 
+    enum RxStatus_t
+    {
+        RXSUCCESS,
+        RXCONTINUE,
+        RXIDLE,
+        RXTIMEOUT,
+        RXINVALID
+    };
+
     // Function protoypes
     void PenUpdate();
     void updateLcdsWithModel();
@@ -324,7 +330,7 @@ private:
     bool SaveTubeDataFile();
     void StartUpMachine();
     void StopTheMachine();
-    int RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response);
+    void RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response, RxStatus_t *pRxStatus);
     void SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar);
     void SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint8_t limits, uint8_t averaging,
                                      uint8_t screenGain, uint8_t anodeGain);
