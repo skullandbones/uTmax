@@ -617,24 +617,21 @@ void MainWindow::RxData()
     }
 
     // ---------------------------------------------------
-    if (sendADC == true)
+    // Deal with user requests, communications must be idle
+    if (RxCode == RXIDLE || RxCode == RXSUCCESS)
     {
-        qDebug() << "RxData: Action sendADC";
-        heat = 0;
-        SendADCCommand(&CmdRsp);
-        status = wait_adc;
-        sendADC = false;
-        return;
-    }
-
-    if (sendPing == true)
-    {
-        qDebug() << "RxData: Action sendPing";
-        heat = 0;
-        SendEndMeasurementCommand(&CmdRsp);
-        status = WaitPing;
-        sendPing = false;
-        return;
+        if (sendADC == true)
+        {
+            qDebug() << "RxData: Action sendADC";
+            status = read_adc;
+            sendADC = false;
+        }
+        else if (sendPing == true)
+        {
+            qDebug() << "RxData: Action sendPing";
+            status = send_ping;
+            sendPing = false;
+        }
     }
 
     // ---------------------------------------------------
@@ -644,6 +641,20 @@ void MainWindow::RxData()
 
     switch (status)
     {
+        case send_ping:
+        {
+            heat = 0;
+            SendEndMeasurementCommand(&CmdRsp);
+            status = WaitPing;
+            break;
+        }
+        case read_adc:
+        {
+            heat = 0;
+            SendADCCommand(&CmdRsp);
+            status = wait_adc;
+            break;
+        }
         case Idle:
         {
             time = 0;
