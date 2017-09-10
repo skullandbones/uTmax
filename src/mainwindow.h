@@ -200,7 +200,6 @@ private:
     bool doStart;
     QTimer *timer;
     bool ok;
-    bool newMessage;
     float Vdi;
     float power;
 
