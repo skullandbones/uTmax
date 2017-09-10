@@ -91,13 +91,17 @@ MainWindow::MainWindow(QWidget *parent) :
     options.VgScale=1.0;
     portInUse = NULL;
     penList = new QList<QPen>;
-    status=Idle;
-    startSweep=0;
-    stop=false;
-    timer=NULL;
-    newMessage=false;
-    sendADC=false;
-    sendPing=false;
+
+    timer = NULL;
+    status = Idle;
+    startSweep = 0;
+    stop = false;
+    doStop = false;
+    doStart = false;
+    sendADC = false;
+    sendPing = false;
+    newMessage = false;
+
     VaADC=0;
     VsADC=0;
     VgADC=0;
@@ -253,7 +257,7 @@ void MainWindow::RequestOperation(Operation_t ReqOperation)
         case Stop:
         {
             qDebug() << "RequestOperation: Stop";
-            stop = true;
+            doStop = true;
             StartUpMachine();
             break;
         }
@@ -282,11 +286,8 @@ void MainWindow::RequestOperation(Operation_t ReqOperation)
         case Start:
         {
             qDebug() << "RequestOperation: Start";
-            if (SetUpSweepParams())
-            {
-                startSweep += 1;
-                StartUpMachine();
-            }
+            doStart = true;
+            StartUpMachine();
             break;
         }
         default:
@@ -620,17 +621,32 @@ void MainWindow::RxData()
     // Deal with user requests, communications must be idle
     if (RxCode == RXIDLE || RxCode == RXSUCCESS)
     {
-        if (sendADC == true)
+        if (doStop == true)
         {
-            qDebug() << "RxData: Action sendADC";
-            status = read_adc;
-            sendADC = false;
+            qDebug() << "RxData: Action doStop";
+            stop = true;
+            doStop = false;
         }
         else if (sendPing == true)
         {
             qDebug() << "RxData: Action sendPing";
             status = send_ping;
             sendPing = false;
+        }
+        else if (sendADC == true)
+        {
+            qDebug() << "RxData: Action sendADC";
+            status = read_adc;
+            sendADC = false;
+        }
+        else if (doStart == true)
+        {
+            qDebug() << "RxData: Action doStart";
+            if (SetUpSweepParams())
+            {
+                startSweep += 1;
+            }
+            doStart = false;
         }
     }
 

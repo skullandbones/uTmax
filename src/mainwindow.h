@@ -196,6 +196,8 @@ private:
     int curve;
     int heat;
     bool stop;
+    bool doStop;
+    bool doStart;
     QTimer *timer;
     bool ok;
     bool newMessage;
