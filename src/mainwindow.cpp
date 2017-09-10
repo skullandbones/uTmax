@@ -103,7 +103,6 @@ MainWindow::MainWindow(QWidget *parent) :
     doStart = false;
     sendADC = false;
     sendPing = false;
-    newMessage = false;
 
     VaADC=0;
     VsADC=0;
