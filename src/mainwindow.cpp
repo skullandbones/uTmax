@@ -97,7 +97,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     timer = NULL;
     status = Idle;
-    startSweep = 0;
     stop = false;
     doStop = false;
     doStart = false;
@@ -592,6 +591,7 @@ void MainWindow::RxData()
     static QByteArray response;
     static int distime;
     RxStatus_t RxCode;
+    static bool repeatTest = false;
 
     // ---------------------------------------------------
     // Sanity check that the port is still OK
@@ -692,11 +692,46 @@ void MainWindow::RxData()
         else if (doStart == true)
         {
             qDebug() << "RxData: Action doStart";
-            if (SetUpSweepParams())
-            {
-                startSweep += 1;
-            }
             doStart = false;
+            if (!SetUpSweepParams()) return;
+
+            switch (status)
+            {
+                case Idle:
+                {
+                    qDebug() << "RxData: Start from Idle";
+                    repeatTest = false;
+                    status = start_sweep_heater;
+                    break;
+                }
+                case Heating:
+                {
+                    qDebug() << "RxData: Jump to max heating";
+                    heat = HEAT_CNT_MAX;
+                    break;
+                }
+                case heat_done:
+                {
+                    qDebug() << "RxData: Start the sweep test now";
+                    if (dataStore->length() > 0) dataStore->clear();
+                    CreateTestVectors();
+                    curve = 0;
+                    status = Sweep_set;
+                    break;
+                }
+                case Sweep_adc:
+                case Sweep_set:
+                {
+                    qDebug() << "RxData: Repeat the test run";
+                    repeatTest = true;
+                    break;
+                }
+                default:
+                {
+                    qDebug() << "ERROR: RxData: Cannot start from state:" << status_name[status];
+                    break;
+                }
+            }
         }
     }
 
@@ -721,43 +756,31 @@ void MainWindow::RxData()
             status = wait_adc;
             break;
         }
-        case Idle:
+        case start_sweep_heater:
         {
             time = 0;
 
-            if (startSweep > 0)
-            {
-                startSweep -= 1;
-                StoreData(false); //Init data store
-                VsStep = 0;
-                VgStep = 0;
-                VaStep = 0;
-                curve = 0;
+            StoreData(false); // Init data store
+            VsStep = 0;
+            VgStep = 0;
+            VaStep = 0;
+            curve = 0;
 
-                if (heat != HEAT_CNT_MAX)
-                {
-                    ui->statusBar->showMessage("Heating setup");
-                    status = Heating_wait00;
-                    heat = 0;
-                    ui->HeaterProg->setValue(1);
-                }
-                else
-                {
-                    ui->statusBar->showMessage("Sweep setup");
-                    status = Sweep_set;
-                    delay=options.Delay;
-                }
+            ui->statusBar->showMessage("Heating setup");
+            heat = 0;
+            ui->HeaterProg->setValue(1);
+            ui->CaptureProg->setValue(1);
 
-                ui->CaptureProg->setValue(1);
+            SendStartMeasurementCommand(&CmdRsp, lim[options.Ilimit], avg[options.AvgNum],
+                                        Ir[options.IsRange], Ir[options.IaRange]);
 
-                SendStartMeasurementCommand(&CmdRsp, lim[options.Ilimit], avg[options.AvgNum],
-                                            Ir[options.IsRange], Ir[options.IaRange]);
-            }
-            else
-            {
-                // All operations completed so stop
-                StopTheMachine();
-            }
+            status = Heating_wait00;
+            break;
+        }
+        case Idle:
+        {
+            // All operations completed so stop
+            StopTheMachine();
             break;
         }
         case WaitPing:
@@ -819,11 +842,6 @@ void MainWindow::RxData()
             {
                 if (heat <= HEAT_CNT_MAX)
                 {
-                    if (startSweep > 0)
-                    {
-                        startSweep -= 1;
-                        heat = HEAT_CNT_MAX;
-                    }
                     ui->HeaterProg->setValue((100 * heat) / HEAT_CNT_MAX);
                     VfADC = GetVf((float)heat);
                     if (VfADC > 1023) VfADC = 1023;
@@ -852,9 +870,8 @@ void MainWindow::RxData()
                 SendFilamentCommand(&CmdRsp, 0);
                 ui->CaptureProg->setValue(0);
             }
-            else if (startSweep > 0 || time / 1000 == HEAT_WAIT_SECS)
+            else if (time / 1000 == HEAT_WAIT_SECS)
             {
-                startSweep = 0;
                 if (dataStore->length() > 0) dataStore->clear();
                 CreateTestVectors();
                 curve = 0;
@@ -1041,8 +1058,9 @@ void MainWindow::RxData()
                 }
                 else
                 {
-                    if (startSweep > 0) //skip re-heating
+                    if (repeatTest) //skip re-heating
                     {
+                        repeatTest = false;
                         if (LOGGING) QTextStream(&logFile) << "+sweep complete warm start\n";
                         status = heat_done;
                         ui->statusBar->showMessage("Sweep complete");
