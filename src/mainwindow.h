@@ -183,11 +183,11 @@ private:
 
     enum Status_t { WaitPing, Heating, Heating_wait00, Heating_wait_adc,
                     Sweep_set, Sweep_adc, Idle, wait_adc,
-                    hold_ack, hold, heat_done, HeatOff};
+                    hold_ack, hold, heat_done, HeatOff, read_adc, send_ping};
     Status_t status;
-    QString status_name[HeatOff + 1] = {"WaitPing", "Heating", "Heating_wait00", "Heating_wait_adc",
+    QString status_name[send_ping + 1] = {"WaitPing", "Heating", "Heating_wait00", "Heating_wait_adc",
                                         "Sweep_set", "Sweep_adc", "Idle", "wait_adc",
-                                        "hold_ack", "hold", "heat_done", "HeatOff"};
+                                        "hold_ack", "hold", "heat_done", "HeatOff", "read_adc", "send_ping"};
 
     int startSweep;
     int VsStep;
