@@ -4,17 +4,12 @@
 #define TIMER_SET 500
 #define ADC_READ_TIMEOUT (30000/TIMER_SET)
 #define PING_TIMEOUT (5000/TIMER_SET)
-#define RXSUCCESS 1
-#define RXTIMEOUT -1
-#define RXCONTINUE 0
-#define RXINVALID -2
+
 #define HEAT_CNT_MAX 20
 #define HEAT_WAIT_SECS 60
 
 
 #include <QMainWindow>
-//#include "../3rdparty/qextserialport-1.2rc/src/qextserialport.h"
-//#include "../3rdparty/qextserialport-1.2rc/src/qextserialenumerator.h"
 #include <QQueue>
 #include <QTimer>
 #include <QFile>
@@ -29,8 +24,9 @@
 #include <QtSerialPort/QSerialPortInfo>
 
 
-namespace Ui {
-class MainWindow;
+namespace Ui
+{
+    class MainWindow;
 }
 
 class MainWindow : public QMainWindow
@@ -38,7 +34,9 @@ class MainWindow : public QMainWindow
     Q_OBJECT
     
 public:
+    // Type and variable declarations
     explicit MainWindow(QWidget *parent = 0);
+
     struct calData_t
     {
         float VaVal;
@@ -55,17 +53,11 @@ public:
         float IaMax=200;
         float IsMax=200;
         float VgMax=-57;
-    } ;
+    };
+
     calData_t calData;
     QString dataFileName;
     QString calFileName;
-    void ReadCalibration();
-    void ReadDataFile();
-    ~MainWindow();
-
-    void SaveCalFile();
-    void GetReal();
-    void DataSaveDialog_clicked(const QString &);
 
     struct adc_data_t
     {
@@ -80,6 +72,7 @@ public:
         int Gain_a;
         int Gain_s;
     };
+
     // This holds the ADC data from uTracer
     adc_data_t adc_data;
 
@@ -102,9 +95,12 @@ public:
         float Gain_a;
         float Gain_s;
     };
+
     adc_scale_t adc_scale;  //the ADC scale factors
     adc_scale_t adc_real;   //the real version of the ADC readings
-    struct options_t {
+
+    struct options_t
+{
         int IaRange;
         int IsRange;
         int Delay;
@@ -113,6 +109,7 @@ public:
         bool AbortOnLimit;
         float VgScale;
     };
+
     options_t options;
 
     QByteArray TxString;
@@ -137,19 +134,22 @@ public:
     float VsNow;
     float VgNow;
     float VfNow;
-    //QextSerialPort * portInUse;
-    //QList<QextPortInfo> serPortInfo;
-    QSerialPort * portInUse;
-    QList<QSerialPortInfo> serPortInfo;
     QString comport;
-    void OpenComPort(const QString *);
+    QString uTmaxDir;
 
+    // Function protoypes
+    ~MainWindow();
+    bool ReadCalibration();
+    bool ReadDataFile();
+    void SerialPortDiscovery();
+    bool SaveCalFile();
+    void GetReal();
+    void DataSaveDialog_clicked(const QString &);
+    bool OpenComPort(const QString *, bool updateCalFile);
+    bool CloseComPort();
+    void RequestOperation(Operation_t ReqOperation);
 
 public slots:
-    //void onDeviceDiscovered(const QextPortInfo & );
-    //void onDeviceRemoved(const QextPortInfo & );
-    //TODO Update plot when this happens:
-    //void ErrorWeightClicked();
 
 
 private slots:
@@ -167,10 +167,7 @@ private slots:
     void on_Stop_clicked();
     void on_TubeType_currentIndexChanged(int index);
     void on_actionSave_Spice_Model_triggered();
-    //void on_plotDockWidget_dockLocationChanged(const Qt::DockWidgetArea &area);
-    //void on_plotDockWidget_topLevelChanged(bool topLevel);
     void on_actionRead_Data_triggered();
-    //void on_actionPreferences_triggered();
     void on_AutoPath_editingFinished();
     void on_AddType_clicked();
     void on_DeleteType_clicked();
@@ -178,52 +175,35 @@ private slots:
     void on_checkQuickTest_clicked();
     void on_Tabs_currentChanged(int index);
     void on_Tabs_tabCloseRequested(int index);
-
     void on_Browse_clicked();
 
 private:
+    // Type and variable declarations
     Ui::MainWindow *ui;
-    void PenUpdate();
-    void updateLcdsWithModel();
-    void SerialPortDiscovery();
-    void updateSweepGreying();
-    void updateTubeGreying();
-    void CreateTestVectors();
-    void ClearLCDs();
-
 
     enum Status_t { WaitPing, Heating, Heating_wait00, Heating_wait_adc,
                     Sweep_set, Sweep_adc, Idle, wait_adc,
-                    hold_ack, hold, heat_done,HeatOff};
+                    hold_ack, hold, heat_done, HeatOff, read_adc, send_ping,
+                    start_sweep_heater, wait_stop, max_state};
     Status_t status;
-    QString uTmaxDir;
-    int startSweep;
+    QString status_name[max_state] = {"WaitPing", "Heating", "Heating_wait00", "Heating_wait_adc",
+                                      "Sweep_set", "Sweep_adc", "Idle", "wait_adc",
+                                      "hold_ack", "hold", "heat_done", "HeatOff", "read_adc", "send_ping",
+                                      "start_sweep_heater", "wait_stop"};
+
     int VsStep;
     int VgStep;
     int VaStep;
     int curve;
     int heat;
-    bool stop;
-    bool timer_on;
-    int timeout;
-    QTimer * timer;
-    void saveADCInfo(QByteArray *);
-    int GetVa(float);
-    int GetVs(float);
-    int GetVg(float);
-    int GetVf(float);
+    bool doStop;
+    bool doStart;
+    QTimer *timer;
     bool ok;
-    bool newMessage;
-    void sendSer();
-    QByteArray RxString;
-    void StoreData(bool);
-    void SetUpPlot();
-    bool SetUpSweepParams();
     float Vdi;
     float power;
-    void UpdateTitle();
 
-    //test vector store
+    // Test vector store
     struct test_vector_t {
         float Va, Vs, Vg;
     };
@@ -231,7 +211,7 @@ private:
     test_vector_t test_vector;
     QList<test_vector_t> *sweepList;
 
-    //results store
+    // Results store
     results_t results;
     QList<results_t> *dataStore;
     QList<results_t> *refStore;
@@ -273,24 +253,94 @@ private:
         float EmmVg;
         float EmmIa;
     };
+
     tubeData_t tubeData;
     QList<tubeData_t> *tubeDataList;
 
     plotInfo_t plot1;
 
-    void LabelPins(tubeData_t);
-    void DoPlot(plotInfo_t *  );
-    void RePlot(QList<results_t> * );
-    bool SaveTubeDataFile();
-
-    QList<QPen> * penList;
-    int RxPkt(int len, QByteArray * pCmd, QByteArray * pResponse);
+    QList<QPen> *penList;
     QFile logFile;
-    dr_optimize * optimizer;
+    dr_optimize *optimizer;
 
     QList<PlotTabWidget*> plotTabs;
     bool ignoreIndexChange;
 
+    QSerialPort *portInUse;
 
+    enum RxState_t
+    {
+        RxIdle,
+        RxEchoed,
+        RxEchoError,
+        RxResponse,
+        RxComplete
+    };
+
+    enum TxState_t
+    {
+        TxIdle,
+        TxLoaded,
+        TxSending,
+        TxRxing,
+        TxComplete
+    };
+
+    struct CommandResponse_t
+    {
+        QByteArray Command;
+        int txPos;
+        TxState_t txState;
+        int ExpectedRspLen;
+        QByteArray Response;
+        int rxPos;
+        RxState_t rxState;
+        int timeout;
+    };
+
+    CommandResponse_t CmdRsp;
+
+    enum RxStatus_t
+    {
+        RXSUCCESS,
+        RXCONTINUE,
+        RXIDLE,
+        RXTIMEOUT,
+        RXINVALID
+    };
+
+    // Function protoypes
+    void PenUpdate();
+    void updateLcdsWithModel();
+    void updateSweepGreying();
+    void updateTubeGreying();
+    void CreateTestVectors();
+    void ClearLCDs();
+    void saveADCInfo(QByteArray *);
+    int GetVa(float);
+    int GetVs(float);
+    int GetVg(float);
+    int GetVf(float);
+    void StoreData(bool);
+    void SetUpPlot();
+    bool SetUpSweepParams();
+    void UpdateTitle();
+    void LabelPins(tubeData_t);
+    void DoPlot(plotInfo_t *);
+    void RePlot(QList<results_t> *);
+    bool SaveTubeDataFile();
+    void StartUpMachine();
+    void StopTheMachine();
+    void RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response, RxStatus_t *pRxStatus);
+    void SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar);
+    void SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint8_t limits, uint8_t averaging,
+                                     uint8_t screenGain, uint8_t anodeGain);
+    void SendGetMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint16_t anodeV, uint16_t screenV,
+                                   uint16_t gridV, uint16_t filamentV);
+    void SendHoldMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint16_t anodeV, uint16_t screenV,
+                                    uint16_t gridV, uint16_t filamentV, int delay);
+    void SendEndMeasurementCommand(CommandResponse_t *pSendCmdRsp);
+    void SendFilamentCommand(CommandResponse_t *pSendCmdRsp, uint16_t filament);
+    void SendADCCommand(CommandResponse_t *pSendCmdRsp);
 };
 #endif // MAINWINDOW_H

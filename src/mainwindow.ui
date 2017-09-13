@@ -37,7 +37,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>utMax 1.0e</string>
+   <string>uTmax 2.0-rc1 Dean's version</string>
   </property>
   <property name="windowIcon">
    <iconset>
@@ -2425,6 +2425,11 @@ background-color:rgb(0, 0, 0);
              <height>40</height>
             </size>
            </property>
+           <property name="font">
+            <font>
+             <pointsize>8</pointsize>
+            </font>
+           </property>
            <property name="toolTip">
             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select tube model in database&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
@@ -2685,7 +2690,7 @@ border-color: #800000;
      <x>0</x>
      <y>0</y>
      <width>651</width>
-     <height>22</height>
+     <height>19</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuUtgui">

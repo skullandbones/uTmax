@@ -91,15 +91,14 @@ MainWindow::MainWindow(QWidget *parent) :
     options.VgScale=1.0;
     portInUse = NULL;
     penList = new QList<QPen>;
-    status=Idle;
-    startSweep=0;
-    stop=false;
-    timer_on = false;
-    timeout=PING_TIMEOUT;
-    timer=NULL;
-    newMessage=false;
-    sendADC=false;
-    sendPing=false;
+
+    timer = NULL;
+    status = Idle;
+    doStop = false;
+    doStart = false;
+    sendADC = false;
+    sendPing = false;
+
     VaADC=0;
     VsADC=0;
     VgADC=0;
@@ -144,659 +143,911 @@ MainWindow::MainWindow(QWidget *parent) :
     //
     optimizer = new dr_optimize();
 
-    //get paths and define file names
-    //appDir = QCoreApplication.applicationDirPath()
-    uTmaxDir = QDir::homePath();
-    uTmaxDir.append("/uTmax_files/");
-    dataFileName = uTmaxDir;
-    dataFileName.append("data.csv");
-    ReadDataFile();
-    calFileName = uTmaxDir;
-    calFileName.append("cal.txt");
-    ReadCalibration();
-
-    adc_scale.Va=(470000 + calData.RaVal)/calData.RaVal;
-    adc_scale.Vs=(470000 + calData.RaVal)/calData.RaVal;
-    SerialPortDiscovery();
+    // Initalise the command response structure
+    CmdRsp.txState = TxIdle;
+    CmdRsp.rxState = RxIdle;
+    CmdRsp.timeout = 0;
 }
-
 
 MainWindow::~MainWindow()
 {
+    qDebug() << "~MainWindow: Destroy everything!";
     delete optimizer;
-    //Close open port
-    if (portInUse->isOpen()  ) {
-        portInUse->close();
-    }
+
+    // Stop the machine
+    StopTheMachine();
+
+    // Close open port
+    CloseComPort();
+
     delete ui;
 }
 
 // Serial Port Management
 void MainWindow::SerialPortDiscovery()
 {
-    //create a port object
+    // Get a list of serial ports
+    QList<QSerialPortInfo> serPortInfo = QSerialPortInfo::availablePorts();
+    bool found = false;
+    qDebug() << "Requested serial port:" << comport;
+    foreach (QSerialPortInfo port, serPortInfo) {
+        if (port.portName().isEmpty()) continue;
+        qDebug() << "Available serial port:" << port.portName();
+        if (!found && comport.contains(port.portName())) {
+            found = true;
+            qDebug() << "Using serial port:" << comport;
+            if (!OpenComPort(&comport, false))
+            {
+                // Failed to open the serial port so set comport to "none"
+                comport = "none";
+            }
+        }
+    }
+    if (!found) {
+        qDebug() << "ERROR: Requested serial port:" << comport << "not found";
+        ui->statusBar->showMessage("The requested serial port was not found, try a different one.");
+    }
+}
+
+bool MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
+{
+    CloseComPort();
+
+    qDebug() <<"MainWindow::OpenComPort";
+
+    // Create a serial port object
     portInUse = new QSerialPort(this);
     portInUse->setBaudRate(QSerialPort::Baud9600);
     portInUse->setDataBits(QSerialPort::Data8);
     portInUse->setParity(QSerialPort::NoParity );
     portInUse->setStopBits(QSerialPort::OneStop);
     portInUse->setFlowControl(QSerialPort::NoFlowControl);
-    //10 bits????
-    connect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
 
-    //get a list of ports
-    serPortInfo = QSerialPortInfo::availablePorts();
-    bool found = false;
-    foreach (QSerialPortInfo port, serPortInfo) {
-        qDebug() << "SerialPortDiscovery: comport=" << comport <<  "available=" << port.portName();
-        if (comport.contains(port.portName()) and port.portName()!="") {
-            found = true;
-            break;
-        }
-    }
-    if (found) {
-        OpenComPort(&comport);
-    }
-    else  {
-        ui->statusBar->showMessage("The requested COM port was not found, try a different one.");
-    }
-}
-
-void MainWindow::OpenComPort(const QString *portName)
-{
-    qDebug() <<"MainWindow::OpenComPort";
-    //Close open port
-    if (portInUse->isOpen()) {
-        qDebug() << "Closing Port:" << portInUse->portName();
-        portInUse->close();
-    }
-    //Open requested port
+    // Open requested port
     comport = *portName;
     portInUse->setPortName(comport);
-    qDebug() << "MainWindow::OpenComPort"  << portInUse->portName();
+    qDebug() << "MainWindow::OpenComPort" << portInUse->portName();
     QString msg;
-    if ( portInUse->open(QIODevice::ReadWrite))
+    bool openResult;
+    if (portInUse->open(QIODevice::ReadWrite))
     {
+        openResult = true;
+        connect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
         msg = QString("Port %1 opened").arg(comport);
-        SaveCalFile(); //Update cal file with new port info
+        if (updateCalFile)
+            SaveCalFile(); //Update cal file with new port info
     }
     else
     {
-       msg = QString("Port %1 failed to open").arg(comport);
+        delete portInUse;
+        portInUse = NULL;
+        msg = QString("Port %1 failed to open").arg(comport);
+        openResult = false;
     }
     ui->statusBar->showMessage(msg);
 
-    //Start RxData Timer
-    if (timer==NULL) {
+    // Probe for the uTracer being present
+    if (openResult) RequestOperation((Operation_t) Probe);
+
+    return(openResult);
+}
+
+bool MainWindow::CloseComPort()
+{
+    qDebug() <<"MainWindow::CloseComPort";
+
+    // Close open port
+    if (portInUse)
+    {
+        disconnect(portInUse, SIGNAL(readyRead()), this, SLOT(readData()));
+        qDebug() << "Closing Port:" << portInUse->portName();
+        portInUse->close();
+        delete portInUse;
+        portInUse = NULL;
+    }
+}
+
+void MainWindow::RequestOperation(Operation_t ReqOperation)
+{
+    switch (ReqOperation)
+    {
+        case Stop:
+        {
+            qDebug() << "RequestOperation: Stop";
+            doStop = true;
+            StartUpMachine();
+            break;
+        }
+        case Probe:
+        {
+            qDebug() << "RequestOperation: Probe";
+            ui->statusBar->showMessage("Starting up...");
+            sendADC = true;
+            StartUpMachine();
+            break;
+        }
+        case Ping:
+        {
+            qDebug() << "RequestOperation: Ping";
+            sendPing = true;
+            StartUpMachine();
+            break;
+        }
+        case ReadADC:
+        {
+            qDebug() << "RequestOperation: ReadADC";
+            sendADC = true;
+            StartUpMachine();
+            break;
+        }
+        case Start:
+        {
+            qDebug() << "RequestOperation: Start";
+            doStart = true;
+            StartUpMachine();
+            break;
+        }
+        default:
+        {
+            qDebug() << "ERROR: RequestOperation: Unrecognised operation:" << ReqOperation;
+            break;
+        }
+    }
+}
+
+void MainWindow::StartUpMachine()
+{
+    // Start up the machine
+    if (!timer)
+    {
+        qDebug() << "StartUpMachine: Starting up the machine!";
         timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
-        ui->statusBar->showMessage("Starting up...");
-        timer_on=true;
-        timeout=PING_TIMEOUT;
-        sendADC=true;
         timer->start(TIMER_SET);
     }
 }
 
-void MainWindow::readData() {
-    RxString.append(portInUse->readAll());
+void MainWindow::StopTheMachine()
+{
+    // Stop the machine
+    if (timer)
+    {
+        qDebug() << "StopTheMachine: Destroying the timer";
+        timer->stop();
+        disconnect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
+        delete timer;
+        timer = NULL;
+    }
 }
 
-int MainWindow::RxPkt(int len, QByteArray * cmd, QByteArray * response)
+void MainWindow::SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar)
 {
-    //if (portInUse->bytesAvailable()>0)   RxString.append(portInUse->readAll());
-    if (len==0) return RXCONTINUE;
-    //qDebug() << "RxPkt: cmd is: len=" << len << "cmd=" << cmd->constData();
-    timeout--;
-    if (timeout ==0) {
-        RxString.clear();
-        response->clear();
-        qDebug() << "RxPkt: TIMEOUT";
-        return RXTIMEOUT;
+    static CommandResponse_t *pSendCmdRsp = NULL;
+    QByteArray txChar;
+
+    if (txLoad)
+    {
+        pSendCmdRsp = pCmdRsp;
+        pSendCmdRsp->txState = TxLoaded;
     }
-    //if (RxString.length()>0) qDebug() << "RxPkt: RxString is:" << RxString << "len is now::" << RxString.length();
-    if (RxString.length()>=len) {
-        if ( (cmd->length()==0) || RxString.startsWith(* cmd) ) {
-            * response = RxString.mid(cmd->length(),len);
-            //qDebug() << "RxPkt: reply OK, response" << response->constData();
-            RxString.clear();
-            if (len==18) echoString = TxString;
-            if (len==38+18) {
-                echoString = TxString;
-                statusString = response->constData();
+
+    switch (pSendCmdRsp->txState)
+    {
+        case TxLoaded:
+        {
+            pSendCmdRsp->txPos = 0;
+            pSendCmdRsp->rxPos = 0;
+            pSendCmdRsp->Response.clear();
+            qDebug() << "SendCommand: TX loaded, Cmd len:" << pSendCmdRsp->Command.length() \
+                     << "Expected Response len:" << pSendCmdRsp->ExpectedRspLen;
+
+            // Transmit the first character
+            txChar.append(pSendCmdRsp->Command.at(pSendCmdRsp->txPos));
+            qDebug() << "SendCommand: send char:" << txChar;
+            if (portInUse) portInUse->write(txChar);
+            pSendCmdRsp->txState = TxSending;
+            pSendCmdRsp->rxState = RxIdle;
+            break;
+        }
+        case TxSending:
+        {
+            // Check TX was echoed OK
+            if (rxChar == pSendCmdRsp->Command.at(pSendCmdRsp->txPos))
+            {
+                pSendCmdRsp->rxState = RxEchoed;
+                qDebug() << "SendCommand: RX Echo:" << rxChar;
             }
-            //if (len==18+18) {
-            //    echoString = TxString;
-            //    statusString = response->constData();
-            //}
-            cmd->clear();
-            return RXSUCCESS ;
+            else
+            {
+                pSendCmdRsp->rxState = RxEchoError;
+                qDebug() << "ERROR: SendCommand: Echo failed:" << rxChar;
+                pSendCmdRsp->txState = TxIdle;
+                break;
+            }
+
+            pSendCmdRsp->txPos++;
+
+            if (pSendCmdRsp->txPos < pSendCmdRsp->Command.length())
+            {
+                // Transmit the next character
+                txChar.append(pSendCmdRsp->Command.at(pSendCmdRsp->txPos));
+                qDebug() << "SendCommand: send char:" << txChar;
+                if (portInUse) portInUse->write(txChar);
+            }
+            else
+            {
+                if (pSendCmdRsp->rxPos == pSendCmdRsp->ExpectedRspLen)
+                {
+                    // No response message was expected
+                    qDebug() << "SendCommand: RX response: None";
+                    pSendCmdRsp->rxState = RxComplete;
+                    pSendCmdRsp->txState = TxComplete;
+                }
+                else
+                {
+                    // Now receiving the RX response message
+                    qDebug() << "SendCommand: RX response: Wait for message";
+                    pSendCmdRsp->rxState = RxResponse;
+                    pSendCmdRsp->txState = TxRxing;
+                }
+            }
+            break;
         }
-        else {
-            qDebug() << "RxPkt: reply invalid=" << RxString;
-            RxString.clear();
-            response->clear();
-            return RXINVALID;
+        case TxRxing:
+        {
+            if (pSendCmdRsp->rxPos < pSendCmdRsp->ExpectedRspLen)
+            {
+                // Receiving the RX response message
+                qDebug() << "SendCommand: RX response:" << rxChar;
+                pSendCmdRsp->Response.append(rxChar);
+                pSendCmdRsp->rxState = RxResponse;
+                pSendCmdRsp->rxPos++;
+            }
+            if (pSendCmdRsp->rxPos == pSendCmdRsp->ExpectedRspLen)
+            {
+                // Received the complete RX response message
+                qDebug() << "SendCommand: RX response: Complete";
+                pSendCmdRsp->rxState = RxComplete;
+                pSendCmdRsp->txState = TxComplete;
+            }
+            break;
+        }
+        default:
+        {
+            qDebug() << "ERROR: SendCommand: Unknown TX state:" << pSendCmdRsp->txState;
         }
     }
-    return RXCONTINUE;
 }
+
+void MainWindow::readData()
+{
+    char rxChar;
+
+    if (portInUse)
+    {
+        while (portInUse->bytesAvailable())
+        {
+            rxChar = portInUse->read(1).at(0);
+            SendCommand(NULL, false, rxChar);
+        }
+    }
+}
+
+void MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response, RxStatus_t *pRxStatus)
+{
+    *pRxStatus = RXCONTINUE;
+
+    if (pSendCmdRsp->timeout)
+    {
+        pSendCmdRsp->timeout--;
+
+        if (pSendCmdRsp->timeout == 0)
+        {
+            qDebug() << "RxPkt: TIMEOUT - try reading for missing RX";
+            readData();
+
+            *pRxStatus = RXTIMEOUT;
+        }
+    }
+    else
+    {
+        qDebug() << "RxPkt: RXIDLE";
+        *pRxStatus = RXIDLE;
+    }
+
+    if (pSendCmdRsp->rxState == RxComplete)
+    {
+        if (pSendCmdRsp->Response.length())
+        {
+            qDebug() << "RxPkt: Processing RX response:" << pSendCmdRsp->Response;
+            *response = pSendCmdRsp->Response;
+        }
+
+        pSendCmdRsp->txState = TxIdle;
+        pSendCmdRsp->rxState = RxIdle;
+
+        pSendCmdRsp->timeout = 0;
+
+        // For the debug window
+        TxString = pSendCmdRsp->Command;
+        echoString = pSendCmdRsp->Command;
+        statusString = pSendCmdRsp->Response;
+
+        *pRxStatus = RXSUCCESS;
+    }
+
+    if (*pRxStatus == RXTIMEOUT)
+    {
+        // Failed to recover, so abandon the command / response
+        qDebug() << "RxPkt: TIMEOUT - failed to recover";
+        response->clear();
+        pSendCmdRsp->txState = TxIdle;
+        pSendCmdRsp->rxState = RxIdle;
+    }
+}
+
+void MainWindow::SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint8_t limits, uint8_t averaging,
+                                             uint8_t screenGain, uint8_t anodeGain)
+{
+    char temp_buffer[30];
+
+    qDebug() << "Send Start Measurement command: limits:" << limits << "averaging:" << averaging \
+             << "Screen Gain:" <<  screenGain << "Anode Gain:" << anodeGain;
+
+    std::snprintf(temp_buffer, 19, "0000000000%02X%02X%02X%02X", limits, averaging, screenGain, anodeGain);
+    pSendCmdRsp->Command = temp_buffer;
+
+    pSendCmdRsp->ExpectedRspLen = 0;
+    pSendCmdRsp->timeout = PING_TIMEOUT;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
+void MainWindow::SendGetMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint16_t anodeV, uint16_t screenV,
+                                           uint16_t gridV, uint16_t filamentV)
+{
+    char temp_buffer[30];
+
+    qDebug() << "Send Get Measurement command: anodeV:" << anodeV << "screenV" << screenV \
+             << "gridV" << gridV << "filamentV:" << filamentV;
+
+    std::snprintf(temp_buffer, 19, "10%04X%04X%04X%04X", anodeV, screenV, gridV, filamentV);
+    pSendCmdRsp->Command = temp_buffer;
+
+    pSendCmdRsp->ExpectedRspLen = 38;
+    pSendCmdRsp->timeout = ADC_READ_TIMEOUT;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
+void MainWindow::SendHoldMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint16_t anodeV, uint16_t screenV,
+                                           uint16_t gridV, uint16_t filamentV, int delay)
+{
+    char temp_buffer[30];
+
+    qDebug() << "Send Hold Measurement command: anodeV:" << anodeV << "screenV" << screenV \
+             << "gridV" << gridV << "filamentV:" << filamentV << "delay" << delay;
+
+    std::snprintf(temp_buffer, 19, "20%04X%04X%04X%04X", anodeV, screenV, gridV, filamentV);
+    pSendCmdRsp->Command = temp_buffer;
+
+    pSendCmdRsp->ExpectedRspLen = 0;
+    pSendCmdRsp->timeout = ADC_READ_TIMEOUT + delay;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
+void MainWindow::SendEndMeasurementCommand(CommandResponse_t *pSendCmdRsp)
+{
+    qDebug() << "Send End Measurement command:";
+    pSendCmdRsp->Command = "300000000000000000";
+    pSendCmdRsp->ExpectedRspLen = 0;
+    pSendCmdRsp->timeout = PING_TIMEOUT;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
+void MainWindow::SendFilamentCommand(CommandResponse_t *pSendCmdRsp, uint16_t filamentV)
+{
+    char temp_buffer[30];
+
+    qDebug() << "Send Filament command: Filament:" << filamentV;
+
+    std::snprintf(temp_buffer, 19, "40000000000000%04X", filamentV);
+    pSendCmdRsp->Command = temp_buffer;
+
+    pSendCmdRsp->ExpectedRspLen = 0;
+    pSendCmdRsp->timeout = PING_TIMEOUT;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
+void MainWindow::SendADCCommand(CommandResponse_t *pSendCmdRsp)
+{
+    qDebug() << "Send ADC command:";
+    pSendCmdRsp->Command = "500000000000000000";
+    pSendCmdRsp->ExpectedRspLen = 38;
+    pSendCmdRsp->timeout = PING_TIMEOUT;
+    SendCommand(pSendCmdRsp, true, 0);
+}
+
 //---------------------------------------------
-//The main control process
+// The main control process
 void MainWindow::RxData()
 {
     static int time;
     static int delay;
-    static int rxLen;
     static int HV_Discharge_Timer;
     char buf[30];
     //I Limits         200,  175,  150,  125, 100,    50,   25,   12,  7mA,  Off
     static int lim[]={0x8f, 0x8d, 0xad, 0xab, 0x84, 0xa4, 0xa2, 0xa1, 0x80, 0x00};
     static int avg[]={0x40, 1, 2, 4, 8, 16, 32, 0x40};
     static int Ir[]={8,1,2,3,4,5,6,7};
-    static QByteArray cmd;
     static QByteArray response;
     static int distime;
+    RxStatus_t RxCode;
+    static bool repeatTest = false;
 
-    if (sendADC==true)
-    {
-        cmd = TxString="500000000000000000";
-        rxLen = TxString.length()+38;
-        heat=0;
-        sendSer();
-        sendADC=false;
-        status=wait_adc;
-        timeout = PING_TIMEOUT;
-        timer_on=true;
-        return;
-    }
-    if (sendPing==true)
-    {
-        cmd = TxString="300000000000000000";
-        rxLen = TxString.length();
-        heat=0;
-        sendSer();
-        sendPing=false;
-        status=WaitPing;
-        timeout = PING_TIMEOUT;
-        timer_on=true;
-        return;
-    }
     // ---------------------------------------------------
-    // sanity check that the port is still OK
-    if (!portInUse->isOpen())
+    // Sanity check that the port is still OK
+    if (!portInUse || !portInUse->isOpen())
     {
-        ui->statusBar->showMessage("COM port was closed, exit and restart.");
+        ui->statusBar->showMessage("ERROR: The serial port closed unexpectedly!");
+        StopTheMachine();
         return;
     }
+
     // ---------------------------------------------------
     // Check for the uTracer response
-    int RxCode = RxPkt(rxLen, &cmd, &response);
+    RxPkt(&CmdRsp, &response, &RxCode);
     // Check for timeout
-    if (RxCode==RXTIMEOUT && timer_on)
+    if (RxCode == RXTIMEOUT)
     {
+        qDebug() << "RxData: Action RxCode RXTIMEOUT";
         ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
-        TxString="300000000000000000";
-        response.clear();
-        cmd = TxString;
-        rxLen = TxString.length();
-        sendSer();
-        timer_on= false;
         status = Idle;
+        StopTheMachine();
         return;
     }
-    //Check for invalid rsponse
-    if (RxCode==RXINVALID)
+
+    // Check for invalid response
+    if (RxCode == RXINVALID)
     {
+        qDebug() << "RxData: Action RxCode RXINVALID";
         ui->statusBar->showMessage("Unexpected response from uTracer; power cycle and restart");
-        response.clear();
-        rxLen = 0;
-        timer_on= false;
         status = Idle;
+        StopTheMachine();
         return;
     }
+
     // ---------------------------------------------------
-    //Main state machine
-    //Check state
-    switch (status) {
-        case Idle: {
-            rxLen = 0;
-            timer_on=false;
-            time=0;
-            //ui->statusBar->showMessage("Ready");
-            if (startSweep>0)
+    // Deal with user requests, communications must be idle
+    if (RxCode == RXIDLE || RxCode == RXSUCCESS)
+    {
+        if (doStop == true)
+        {
+            qDebug() << "RxData: Action doStop";
+            doStop = false;
+
+            switch (status)
             {
-                startSweep-=1;
-                StoreData(false); //Init data store
-                VsStep=0;
-                VgStep=0;
-                VaStep=0;
-                curve=0;
-                if (heat!=HEAT_CNT_MAX) {
-                    ui->statusBar->showMessage("Heating setup");
-                    status = Heating_wait00;
-                    heat=0;
-                    ui->HeaterProg->setValue(1);
+                case Idle:
+                case Heating:
+                case heat_done:
+                {
+                    doStop = false;
+                    qDebug() << "RxData: Stop heating";
+                    HV_Discharge_Timer = 0;
+                    ui->HeaterProg->setValue(0);
+                    ui->statusBar->showMessage("Heater off");
+                    SendFilamentCommand(&CmdRsp, 0);
+                    status = wait_stop;
+                    break;
                 }
-                else {
-                    ui->statusBar->showMessage("Sweep setup");
+                case Sweep_set:
+                case Sweep_adc:
+                case hold:
+                {
+                    doStop = false;
+                    qDebug() << "RxData: Stop sweeping";
+                    float v = VaNow > VsNow ? VaNow : VsNow;
+                    distime = (int)(DISTIME * v / 400);
+                    HV_Discharge_Timer = distime;
+                    ui->statusBar->showMessage("Abort:Heater off");
+                    SendFilamentCommand(&CmdRsp, 0);
+                    ui->CaptureProg->setValue(0);
+                    status = wait_stop;
+                    break;
+                }
+                default:
+                {
+                    qDebug() << "ERROR: RxData: Cannot stop from state:" << status_name[status];
+                    break;
+                }
+            }
+        }
+        else if (sendPing == true)
+        {
+            qDebug() << "RxData: Action sendPing";
+            status = send_ping;
+            sendPing = false;
+        }
+        else if (sendADC == true)
+        {
+            qDebug() << "RxData: Action sendADC";
+            status = read_adc;
+            sendADC = false;
+        }
+        else if (doStart == true)
+        {
+            qDebug() << "RxData: Action doStart";
+            doStart = false;
+            if (!SetUpSweepParams()) return;
+
+            switch (status)
+            {
+                case Idle:
+                {
+                    qDebug() << "RxData: Start from Idle";
+                    repeatTest = false;
+                    status = start_sweep_heater;
+                    break;
+                }
+                case Heating:
+                {
+                    qDebug() << "RxData: Jump to max heating";
+                    heat = HEAT_CNT_MAX;
+                    break;
+                }
+                case heat_done:
+                {
+                    qDebug() << "RxData: Start the sweep test now";
+                    if (dataStore->length() > 0) dataStore->clear();
+                    CreateTestVectors();
+                    curve = 0;
                     status = Sweep_set;
-                    delay=options.Delay;
+                    break;
                 }
-                ui->CaptureProg->setValue(1);
-                TxString="0000000000";
-                ::snprintf(buf, 3, "%02X", lim[options.Ilimit]);
-                TxString+=buf;
-                ::snprintf(buf, 3, "%02X", avg[options.AvgNum]);
-                TxString+=buf;
-                ::snprintf(buf, 3, "%02X", Ir[options.IsRange]);
-                TxString+=buf;
-                ::snprintf(buf, 3, "%02X", Ir[options.IaRange]);
-                TxString+=buf;
-                cmd =TxString;
-                rxLen=18;
-                sendSer();
-                timer_on=true;
-                timeout = PING_TIMEOUT;
+                case Sweep_adc:
+                case Sweep_set:
+                {
+                    qDebug() << "RxData: Repeat the test run";
+                    repeatTest = true;
+                    break;
+                }
+                default:
+                {
+                    qDebug() << "ERROR: RxData: Cannot start from state:" << status_name[status];
+                    break;
+                }
+            }
+        }
+    }
+
+    // ---------------------------------------------------
+    // Main state machine
+    // Check state
+    qDebug() << "RxData: status:" << status << ":" << status_name[status];
+
+    switch (status)
+    {
+        case send_ping:
+        {
+            heat = 0;
+            SendEndMeasurementCommand(&CmdRsp);
+            status = WaitPing;
+            break;
+        }
+        case read_adc:
+        {
+            heat = 0;
+            SendADCCommand(&CmdRsp);
+            status = wait_adc;
+            break;
+        }
+        case start_sweep_heater:
+        {
+            time = 0;
+
+            StoreData(false); // Init data store
+            VsStep = 0;
+            VgStep = 0;
+            VaStep = 0;
+            curve = 0;
+
+            ui->statusBar->showMessage("Heating setup");
+            heat = 0;
+            ui->HeaterProg->setValue(1);
+            ui->CaptureProg->setValue(1);
+
+            SendStartMeasurementCommand(&CmdRsp, lim[options.Ilimit], avg[options.AvgNum],
+                                        Ir[options.IsRange], Ir[options.IaRange]);
+
+            status = Heating_wait00;
+            break;
+        }
+        case wait_stop:
+        {
+            if (RxCode == RXSUCCESS)
+            {
+                status = HeatOff;
             }
             break;
         }
-        case WaitPing: {
-            //qDebug()<<"WaitPing";
-            if (RxCode==RXSUCCESS) {
-                rxLen=0;
-                cmd="";
-                status=Idle;
+        case Idle:
+        {
+            // All operations completed so stop
+            StopTheMachine();
+            break;
+        }
+        case WaitPing:
+        {
+            if (RxCode == RXSUCCESS)
+            {
+                status = Idle;
                 ui->statusBar->showMessage("Ping OK");
-                timer_on=false;
-                timeout = PING_TIMEOUT;
-           }
-            break;
-        }
-        case wait_adc: {
-            //qDebug()<<"Wait_adc";
-            if (RxCode==RXSUCCESS) {
-                saveADCInfo(&response);
-                rxLen=0;
-                cmd="";
-                status=Idle;
-                ui->statusBar->showMessage("Ready");
-                timer_on=false;
-                timeout = PING_TIMEOUT;
-           }
-            break;
-        }
-        case Heating_wait00: {
-            //qDebug()<<"Heating_wait00";
-            if (RxCode==RXSUCCESS) {
-                ui->statusBar->showMessage("Heating, get ADC info");
-                status=Heating_wait_adc;
-                cmd = TxString="500000000000000000";
-                rxLen = TxString.length()+38;
-                sendSer();
-                timer_on=true;
-                timeout=PING_TIMEOUT;
             }
             break;
         }
-        case Heating_wait_adc: {
-            //qDebug()<<"Heating_wait_adc";
-            if (RxCode==RXSUCCESS) {
+        case wait_adc:
+        {
+            if (RxCode == RXSUCCESS)
+            {
+                saveADCInfo(&response);
+                status = Idle;
+                ui->statusBar->showMessage("Ready");
+            }
+            break;
+        }
+        case Heating_wait00:
+        {
+            if (RxCode == RXSUCCESS)
+            {
+                ui->statusBar->showMessage("Heating, get ADC info");
+                SendADCCommand(&CmdRsp);
+                status = Heating_wait_adc;
+            }
+            break;
+        }
+        case Heating_wait_adc:
+        {
+            if (RxCode == RXSUCCESS)
+            {
                 VgNow=ui->VgStart->text().toFloat();
                 saveADCInfo(&response);
-                heat=0;
-                status=Heating;
+                heat = 0;
+                status = Heating;
                 ui->statusBar->showMessage("Heating");
-                TxString="400000000000000000";
-                rxLen = TxString.length();
-                cmd = TxString;
-                sendSer();
-                timer_on=true;
-                timeout = PING_TIMEOUT;
-                heat=1;
+                SendFilamentCommand(&CmdRsp, 0);
+                heat = 1;
             }
             break;
         }
-        case Heating: {
-            //qDebug()<<"Heating";
-            if (stop) {
-                stop = false;
-                status=HeatOff;
-                HV_Discharge_Timer =0;
-                ui->HeaterProg->setValue(0);
-                ui->statusBar->showMessage("Heater off");
-                TxString="400000000000000000";
-                cmd = TxString;
-                rxLen = TxString.length();
-                sendSer();
-                heat=0;
-                timeout =PING_TIMEOUT;
-                timer_on=true;
-            }
-            else if (RxCode==RXSUCCESS) {
-                if (heat<=HEAT_CNT_MAX) {
-                    if (startSweep > 0) {
-                        startSweep -=1;
-                        heat = HEAT_CNT_MAX;
-                    }
-                    ui->HeaterProg->setValue((100*heat)/HEAT_CNT_MAX);
+        case Heating:
+        {
+            if (RxCode == RXSUCCESS)
+            {
+                if (heat <= HEAT_CNT_MAX)
+                {
+                    ui->HeaterProg->setValue((100 * heat) / HEAT_CNT_MAX);
                     VfADC = GetVf((float)heat);
-                    if (VfADC>1023) VfADC=1023;
-                    ::snprintf(buf, 19, "40000000000000%04X", VfADC);
-                    TxString = buf;
-                    rxLen = TxString.length();
-                    cmd = TxString;
-                    timeout = PING_TIMEOUT;
-                    sendSer();
+                    if (VfADC > 1023) VfADC = 1023;
+                    SendFilamentCommand(&CmdRsp, (uint16_t)VfADC);
                     heat++;
                 }
-                else {
-                    //qDebug()<<"Heating Done";
+                else
+                {
                     ui->HeaterProg->setValue(100);
-                    timeout = PING_TIMEOUT;
-                    status=heat_done;
-                    timer_on=false;
-                    rxLen=0;
-                    cmd="";
+                    status = heat_done;
                 }
             }
             break;
         }
-        case heat_done: {
-            //qDebug()<<"Heat_done";
-            QString m = QString("Press 'start' when ready; heating for %1 secs").arg(time/1000);
-            time+=TIMER_SET;
+        case heat_done:
+        {
+            QString m = QString("Press 'start' when ready; heating for %1 secs").arg(time / 1000);
+            time += TIMER_SET;
             ui->statusBar->showMessage(m);
-            delay=options.Delay;
-            if (stop)
+            delay = options.Delay;
+            if (time / 1000 == HEAT_WAIT_SECS)
             {
-                stop = false;
-                status=HeatOff;
-                HV_Discharge_Timer =0;
-                cmd=TxString="400000000000000000";
-                rxLen=TxString.length();
-                sendSer();
-                ui->CaptureProg->setValue(0);
-                timeout =PING_TIMEOUT;
-                timer_on=true;
-            }
-            else if (startSweep>0 || time/1000==HEAT_WAIT_SECS) {
-                startSweep=0;
-                if (dataStore->length()>0) dataStore->clear();
-                rxLen=0;
-                cmd="";
+                if (dataStore->length() > 0) dataStore->clear();
                 CreateTestVectors();
-                curve=0;
-                status=Sweep_set;
+                curve = 0;
+                status = Sweep_set;
             }
             break;
         }
-        case Sweep_set: {
-            if (stop)
+        case Sweep_set:
+        {
+            if (delay == 0)
             {
-                //qDebug() << "Sweep set(stop)";
-                stop = false;
-                status=HeatOff;
-                float v = VaNow > VsNow ? VaNow : VsNow;
-                distime =(int)(DISTIME * v/400);
-                HV_Discharge_Timer =distime;
-                ui->statusBar->showMessage("Abort:Heater off");
-                cmd = TxString="400000000000000000";
-                rxLen = TxString.length();
-                sendSer();
-                ui->CaptureProg->setValue(0);
-                timeout =PING_TIMEOUT;
-                timer_on=true;
-            }
-            else if (delay==0) {
-                //qDebug() << "Sweep set";
                 status=hold_ack;
                 ui->statusBar->showMessage("Sweep Measure");
                 VaNow = sweepList->at(curve).Va;
                 VsNow = sweepList->at(curve).Vs;
                 VgNow = sweepList->at(curve).Vg;
-                //qDebug() << "a=" << VaNow << "s=" << VsNow << "g=" << VgNow;
-                //qDebug() << "VaStep=" << VaStep << "VsStep=" << VsStep << "VgStep=" << VgStep;
-                VaADC = GetVa( VaNow );
-                VsADC = GetVs( VsNow );
-                VgADC = GetVg( VgNow );
+                VaADC = GetVa(VaNow);
+                VsADC = GetVs(VsNow);
+                VgADC = GetVg(VgNow);
                 VfADC = GetVf( HEAT_CNT_MAX );
-                status=Sweep_adc;
-                timeout=ADC_READ_TIMEOUT;
-                timer_on=true;
-                ::snprintf(buf,19,"10%04X%04X%04X%04X",VaADC,VsADC,VgADC,VfADC );
-                cmd = TxString=buf;
-                rxLen=TxString.length()+38;
-                sendSer();
+                status = Sweep_adc;
+                SendGetMeasurementCommand(&CmdRsp, (uint16_t)VaADC, (uint16_t)VsADC, (uint16_t)VgADC, (uint16_t)VfADC);
             }
-            else {
+            else
+            {
                 ui->statusBar->showMessage("Sweep hold");
                 VaNow = sweepList->at(curve).Va;
                 VsNow = sweepList->at(curve).Vs;
                 VgNow = sweepList->at(curve).Vg;
-                if (VaNow>425 || VsNow>425) {
+                if (VaNow > 425 || VsNow > 425)
+                {
                     ui->statusBar->showMessage("Internal Error: Vaor Vs excessive");
-                    stop = false;
-                    status=HeatOff;
+                    status = HeatOff;
                     float v = VaNow > VsNow ? VaNow : VsNow;
-                    distime =(int)(DISTIME * v/400);
-                    HV_Discharge_Timer =distime;
+                    distime = (int)(DISTIME * v / 400);
+                    HV_Discharge_Timer = distime;
                     ui->statusBar->showMessage("Abort:Heater off");
-                    TxString="400000000000000000";
-                    cmd = TxString;
-                    rxLen = TxString.length();
-                    sendSer();
+                    SendFilamentCommand(&CmdRsp, 0);
                     heat=0;
-                    timeout =PING_TIMEOUT;
-                    timer_on=true;
                     break;
                 }
-//                qDebug() << "a=" << VaNow << "s=" << VsNow << "g=" << VgNow;
-//                qDebug() << "VaStep=" << VaStep << "VsStep=" << VsStep << "VgStep=" << VgStep;
-                VaADC = GetVa( VaNow );
-                VsADC = GetVs( VsNow );
-                VgADC = GetVg( VgNow );
-                VfADC = GetVf( HEAT_CNT_MAX );
-                status=hold_ack;
-                timeout=ADC_READ_TIMEOUT + options.Delay;
-                timer_on=true;
-                sprintf(buf,"20%04X%04X%04X%04X",VaADC,VsADC,VgADC,VfADC );
-                cmd = TxString=buf;
-                rxLen=TxString.length();
-                sendSer();
+                VaADC = GetVa(VaNow);
+                VsADC = GetVs(VsNow);
+                VgADC = GetVg(VgNow);
+                VfADC = GetVf(HEAT_CNT_MAX);
+                status = hold_ack;
+                SendHoldMeasurementCommand(&CmdRsp, (uint16_t)VaADC, (uint16_t)VsADC, (uint16_t)VgADC, (uint16_t)VfADC, options.Delay);
             }
             break;
         }
-        case hold_ack: {
-            status=hold;
-            timer_on=false;
-            rxLen=0;
-            cmd="";
+        case hold_ack:
+        {
+            status = hold;
             break;
         }
-        case hold : {
-            if (stop)
+        case hold:
+        {
+            if (delay == 0)
             {
-                stop = false;
-                status=HeatOff;
-                float v = VaNow > VsNow ? VaNow : VsNow;
-                distime =(int)(DISTIME * v/400);
-                HV_Discharge_Timer =distime;
-                ui->statusBar->showMessage("Abort:Heater off");
-                TxString="400000000000000000";
-                cmd = TxString;
-                rxLen = TxString.length();
-                sendSer();
-                heat=0;
-                timeout =PING_TIMEOUT;
-                timer_on=true;
-            }
-            else if (delay==0)
-            {
-                status=Sweep_adc;
+                status = Sweep_adc;
                 ui->statusBar->showMessage("Sweep (set measurement parameters)");
-                //qDebug() << "a=" << VaNow << "s=" << VsNow << "g=" << VgNow;
-                //qDebug() << "VaStep=" << VaStep << "VsStep=" << VsStep << "VgStep=" << VgStep;
                 VaNow = sweepList->at(curve).Va;
                 VsNow = sweepList->at(curve).Vs;
                 VgNow = sweepList->at(curve).Vg;
-                if (VaNow>425 || VsNow>425) {
+                if (VaNow > 425 || VsNow > 425)
+                {
                     ui->statusBar->showMessage("Internal Error: Va or Vs excessive");
-                    stop = false;
-                    status=HeatOff;
+                    status = HeatOff;
                     float v = VaNow > VsNow ? VaNow : VsNow;
-                    distime =(int)(DISTIME * v/400);
-                    HV_Discharge_Timer =distime;
+                    distime = (int)(DISTIME * v / 400);
+                    HV_Discharge_Timer = distime;
                     ui->statusBar->showMessage("Abort:Heater off");
-                    TxString="400000000000000000";
-                    cmd = TxString;
-                    rxLen = TxString.length();
-                    sendSer();
-                    heat=0;
-                    timeout =PING_TIMEOUT;
-                    timer_on=true;
+                    SendFilamentCommand(&CmdRsp, 0);
+                    heat = 0;
                     break;
                 }
 
-                VaADC = GetVa( VaNow );
-                VsADC = GetVs( VsNow );
-                VgADC = GetVg( VgNow );
-                VfADC = GetVf( HEAT_CNT_MAX );
-                timeout=ADC_READ_TIMEOUT;
-                timer_on=true;
-                sprintf(buf,"10%04X%04X%04X%04X",VaADC,VsADC,VgADC,VfADC );
-                cmd = TxString=buf;
-                rxLen = TxString.length()+38;
-                sendSer();
+                VaADC = GetVa(VaNow);
+                VsADC = GetVs(VsNow);
+                VgADC = GetVg(VgNow);
+                VfADC = GetVf(HEAT_CNT_MAX);
+                SendGetMeasurementCommand(&CmdRsp, (uint16_t)VaADC, (uint16_t)VsADC, (uint16_t)VgADC, (uint16_t)VfADC);
             }
-            else {
+            else
+            {
                 ui->statusBar->showMessage("Sweep (Holding)");
-                //qDebug() << "delay=" << delay;
                 delay--;
-                status=hold;
-                rxLen =0;
-                cmd ="";
+                status = hold;
             }
             break;
         }
-        case Sweep_adc: {
-            if (RxCode==RXSUCCESS) {
+        case Sweep_adc:
+        {
+            if (RxCode == RXSUCCESS)
+            {
                 //check current limit
                 saveADCInfo(&response);
                 StoreData(true); //Add to data store
-                if (response.mid(0,2)=="11") {
+                if (response.mid(0,2) == "11")
+                {
                     ui->statusBar->showMessage("WARNING: Current Limit Hit");
                     qDebug() << "Sweep_adc: Current Limit Hit";
-                    if (options.AbortOnLimit==true) {
+                    if (options.AbortOnLimit == true)
+                    {
                         qDebug() << "Sweep_adc: Current Limit Abort";
-                        status=HeatOff;
+                        status = HeatOff;
                         float v = VaNow > VsNow ? VaNow : VsNow;
-                        distime =(int)(DISTIME * v/400);
+                        distime =(int)(DISTIME * v / 400);
                         HV_Discharge_Timer =distime;
                         ui->CaptureProg->setValue(100);
-                        TxString="400000000000000000";
-                        cmd = TxString;
-                        rxLen = TxString.length();
-                        sendSer();
+                        SendFilamentCommand(&CmdRsp, 0);
                         break;
                     }
                 }
                 curve++;
-                bool done=false;
-                if ( (power > tubeData.powerLim) && !ui->checkQuickTest->isChecked()) {
-                    while (!done) {
-                        if (sweepList->at(curve).Va >= VaNow) {
-                            results.Ia=-1; // mark as ignore
+                bool done = false;
+                if ((power > tubeData.powerLim) && !ui->checkQuickTest->isChecked())
+                {
+                    while (!done)
+                    {
+                        if (sweepList->at(curve).Va >= VaNow)
+                        {
+                            results.Ia = -1; // mark as ignore
                             dataStore->append(results);
                             curve++; //skip high power points
-                            if (curve == sweepList->length()) {
-                                done =true;
-                                if ( (dataStore->length()>5) && ui->TubeType->currentText()!=NONE) {
-                                        optimizer->Optimize(dataStore, ui->TubeType->currentIndex(), 1, VaSteps, VsSteps, VgSteps);
-                                        updateLcdsWithModel();
-                                        RePlot(dataStore);
+                            if (curve == sweepList->length())
+                            {
+                                done = true;
+                                if ((dataStore->length() > 5) && ui->TubeType->currentText() != NONE)
+                                {
+                                    optimizer->Optimize(dataStore, ui->TubeType->currentIndex(), 1, VaSteps, VsSteps, VgSteps);
+                                    updateLcdsWithModel();
+                                    RePlot(dataStore);
                                 }
                             }
                         }
-                        else done=true;
+                        else done = true;
 
                     }
                 }
-                if (curve < sweepList->length()) {
-                    int progress=(100*curve)/sweepList->length();
+                if (curve < sweepList->length())
+                {
+                    int progress = (100 * curve) / sweepList->length();
                     ui->CaptureProg->setValue(progress);
                     QString msg = QString("Sweep %1 % done").arg(progress);
                     ui->statusBar->showMessage(msg);
                     delay = options.Delay;
-                    //qDebug() << "From Sweep_adc to Sweep_set";
-                    status=Sweep_set;
-                    timeout=ADC_READ_TIMEOUT;
-                    rxLen=0;
-                    cmd="";
+                    status = Sweep_set;
                 }
                 else
                 {
-                    if (startSweep>0) //skip re-heating
+                    if (repeatTest) //skip re-heating
                     {
+                        repeatTest = false;
                         status = heat_done;
                         ui->statusBar->showMessage("Sweep complete");
                         ui->CaptureProg->setValue(100);
                     }
                     else
                     {
-                        status=HeatOff;
+                        status = HeatOff;
                         float v = VaNow > VsNow ? VaNow : VsNow;
-                        distime =(int)(DISTIME * v/400);
-                        HV_Discharge_Timer =distime;
+                        distime = (int)(DISTIME * v / 400);
+                        HV_Discharge_Timer = distime;
                         ui->statusBar->showMessage("Sweep complete");
                         ui->CaptureProg->setValue(100);
-                        TxString="400000000000000000";
-                        cmd = TxString;
-                        rxLen = TxString.length();
-                        sendSer();
+                        SendFilamentCommand(&CmdRsp, 0);
                     }
                 }
             }
             break;
         }
-        case HeatOff: {
-            //qDebug() << "HeatOff";
+        case HeatOff:
+        {
+            if (RxCode != RXIDLE && RxCode != RXSUCCESS) break;
+
             if (HV_Discharge_Timer>0) HV_Discharge_Timer--;
-            if (HV_Discharge_Timer==(distime-1)) {
-                cmd  = TxString="300000000000000000";
-                rxLen = TxString.length();
-                sendSer();
-                heat=0;
+            if (HV_Discharge_Timer == (distime-1))
+            {
                 ui->HeaterProg->setValue(0);
-                timeout =PING_TIMEOUT;
-                if (ui->checkAutoNumber->isChecked()) {
+                SendEndMeasurementCommand(&CmdRsp);
+                heat = 0;
+                if (ui->checkAutoNumber->isChecked())
+                {
                     if (!ui->checkQuickTest->isChecked()) on_actionSave_plot_triggered();
                     on_actionSave_Data_triggered();
                     int fn = ui->AutoNumber->text().toInt(&ok);
-                    ui->AutoNumber->setText(QString::number(fn+1));
+                    ui->AutoNumber->setText(QString::number(fn + 1));
                 }
-                timer_on=true;
-
-            } else if (HV_Discharge_Timer==0) {
+            }
+            else if (HV_Discharge_Timer==0)
+            {
                 ui->statusBar->showMessage("Ready");
                 status=Idle;
             }
             else
             {
-                timeout =PING_TIMEOUT;
                 QString msg = QString("Countdown for HV to discharge: %1").arg(HV_Discharge_Timer);
                 ui->statusBar->showMessage(msg);
             }
         }
     }
-}
-
-void MainWindow::sendSer()
-{
-    //qDebug() << "Tx:" << TxString;
-    //while (!serQueue.isEmpty()) {serQueue.dequeue();}
-    //RxString.clear();
-    portInUse->write(TxString);
 }
 
 // ------------------
@@ -1353,66 +1604,87 @@ int MainWindow::GetVf(float v)
 
 //------------------------------------------------------
 // Calibration File Management
-void MainWindow::ReadCalibration()
+bool MainWindow::ReadCalibration()
 {
-    //Check to see if the cal file exists
-    QFile datafile(calFileName);
-    if (! datafile.exists())
+    // Start with the default calibration values
+    // Default to the first serial port (if present)
+    int i = 0;
+    int firstEntry = -1;
+    QList<QSerialPortInfo> serPortInfo = QSerialPortInfo::availablePorts();
+    foreach (QSerialPortInfo port, serPortInfo)
     {
-        //It doesn't exist so set up default values and create a file
-        datafile.open(QIODevice::WriteOnly | QIODevice::Text);
-        QTextStream calFile(&datafile);
-        calFile << "COM=COM1\n";
-        calFile << "Va=1.0\n";
-        calFile << "Vs=1.0\n";
-        calFile << "Ia=1.0\n";
-        calFile << "Is=1.0\n";
-        calFile << "Vsu=1.0\n";
-        calFile << "Vg1=1.0\n";
-        calFile << "Vg4=1.0\n";
-        calFile << "Vg40=1.0\n";
-        calFile << "Vg40=1.0\n";
-        calFile << "Vn=1.0\n";
-        calFile << "RaVal=6800\n";
-        calFile << "VaMax=300\n";
-        calFile << "IaMax=200\n";
-        calFile << "IsMax=200\n";
-        calFile << "VgMax=50\n";
-        calFile << ";Define pen number,color RGB, and width\n";
-        int r,g,b,w,h,s,v;
-        for(int i=0; i<16; i++) {
-            h = (360*(i % 16))/16;
-            s = 200;
-            v = 240-100*(i/16);
-            r = QColor::fromHsv(h,s,v,255).red() ;
-            g = QColor::fromHsv(h,s,v,255).green() ;
-            b = QColor::fromHsv(h,s,v,255).blue() ;
-            calFile << "PenNRGBWS="<< i << "," << r << "," << g << "," << b << "," << 2 << "\n";
+        if (!port.portName().isEmpty())
+        {
+            if (firstEntry == -1) firstEntry = i;
+            break;
         }
-        calFile.flush();
-        datafile.close();
-        //qDebug() << "ReadCalibration: Created new cal file";
+        i++;
     }
-    //Initialize a Pen List-
-    int r,g,b,w,h,s,v;
+
+    if (firstEntry != -1)
+    {
+        // Use the first available serial port
+        comport = serPortInfo.at(firstEntry).portName();
+    }
+    else
+    {
+        // Otherwise indicate no serial port
+        comport = "none";
+    }
+
+    // These are the calibrations values including comport.
+    calData.VaVal = 1.0;
+    calData.VsVal = 1.0;
+    calData.IaVal = 1.0;
+    calData.IsVal = 1.0;
+    calData.VsuVal = 1.0;
+    calData.Vg1Val = 1.0;
+    calData.Vg4Val = 1.0;
+    calData.Vg40Val = 1.0;
+    calData.VnVal = 1.0;
+    calData.RaVal = 6800;
+    calData.VaMax = 300;
+    calData.IaMax = 200;
+    calData.IsMax = 200;
+    calData.VgMax = 50;
+
+    // Initialise the Pen List colours
+    int r, g, b, h, s, v;
     QPen grPen;
-    for(int i=0; i<16; i++) {
-        h = (360*(i % 16))/16;
+    for (int i = 0; i < 16; i++)
+    {
+        h = (360 * (i % 16)) / 16;
         s = 200;
-        v = 240-100*(i/16);
-        r = QColor::fromHsv(h,s,v,255).red() ;
-        g = QColor::fromHsv(h,s,v,255).green() ;
-        b = QColor::fromHsv(h,s,v,255).blue() ;
-        grPen.setColor(QColor::fromRgb(r,g,b));
+        v = 240 - 100 * (i / 16);
+        r = QColor::fromHsv(h, s, v, 255).red();
+        g = QColor::fromHsv(h, s, v, 255).green();
+        b = QColor::fromHsv(h, s, v, 255).blue();
+        grPen.setColor(QColor::fromRgb(r, g, b));
         grPen.setWidthF(2);
         penList->append(grPen);
     }
-    //Create a black pen to fill unused entries
+
+    // Check to see if the calibration file exists
+    QFile datafile(calFileName);
+    qDebug() << "Default calibration filename:" << calFileName;
+    if (!datafile.exists())
+    {
+        // Create a default calibration file
+        if (!SaveCalFile())
+            return(false);
+    }
+
+    // Create a black pen to fill unused entries
     QPen black;
     black.setColor(QColor::fromRgb(0,0,0,255));
     black.setWidthF(2);
-    //Open the cal.txt file
-    datafile.open(QIODevice::ReadOnly | QIODevice::Text);
+
+    // Read the calibration file which will replace the default settings in memory
+    if (!datafile.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        qDebug() << "ERROR: failed to open for reading:" << calFileName;
+        return(false);
+    }
     QTextStream in(&datafile);
     while ( !in.atEnd() )
     {
@@ -1458,16 +1730,21 @@ void MainWindow::ReadCalibration()
     m.clear();
     QTextStream(&m) << calData.IaMax << "mA Max";
     ui->labelInfo_3->setText(m);
+
+    adc_scale.Va=(470000 + calData.RaVal)/calData.RaVal;
+    adc_scale.Vs=(470000 + calData.RaVal)/calData.RaVal;
+
+    return(true);
 }
 
-void MainWindow::SaveCalFile()
+bool MainWindow::SaveCalFile()
 {
     qDebug () << "SaveCalFile...";
+    bool ret = false;
     QFile datafile(calFileName);
     if (datafile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream calFile(&datafile);
-        if (portInUse!=NULL) calFile << "COM=" << portInUse->portName() << "\n";
-        else calFile << "COM=COM1\n";
+        calFile << "COM=" << comport << "\n";
         calFile << "Va=" << calData.VaVal << "\n";
         calFile << "Vs=" << calData.VsVal << "\n";
         calFile << "Ia=" << calData.IaVal << "\n";
@@ -1494,22 +1771,30 @@ void MainWindow::SaveCalFile()
         }
         calFile.flush();
         datafile.close();
+        ret = true;
         //qDebug() << "SaveCalFile: ...updated cal file";
     } else qDebug() << "Save Cal file failed";
+
+    return(ret);
 }
 
 //------------------------------------------------------
 // Tube Data file Management
-void MainWindow::ReadDataFile()
+bool MainWindow::ReadDataFile()
 {
     //Check to see if usual data file exists
     QFile datafile(dataFileName);
+    qDebug() << "Default dataFileName:" << dataFileName;
     if (! datafile.exists(dataFileName)) {
         //It doesn't exist so ask for it
-        dataFileName="";
+        dataFileName = QString();
         dataFileName = QFileDialog::getOpenFileName(this,tr("Read Tube Data file"),QDir::homePath(),"Text (*.csv)");
     }
-    if (dataFileName=="") QCoreApplication::quit();
+    if (dataFileName.isNull()) {
+        qDebug() << "ERROR: Valve database .csv file not specified";
+        return(false);
+    }
+    qDebug() << "Using dataFileName: " << dataFileName;
     datafile.setFileName(dataFileName);
     datafile.open(QIODevice::ReadOnly | QIODevice::Text);
     QTextStream in(&datafile);
@@ -1622,6 +1907,7 @@ void MainWindow::ReadDataFile()
     ui->TubeSelector->setCurrentIndex(0);
     on_TubeSelector_currentIndexChanged(tubeDataList->at(0).ID);
     //LabelPins(tubeDataList->at(0)); // should be triggered by change of index;
+    return(true);
 }
 
 void MainWindow::LabelPins(tubeData_t tubeData) {
@@ -2210,10 +2496,9 @@ bool MainWindow::SetUpSweepParams() {
     return true;
 }
 
-void MainWindow::on_Start_clicked() {
-    if (!SetUpSweepParams()) return;
-
-    startSweep+=1;
+void MainWindow::on_Start_clicked()
+{
+    RequestOperation((Operation_t) Start);
 }
 void MainWindow::CreateTestVectors()
 {
@@ -2335,8 +2620,9 @@ void MainWindow::CreateTestVectors()
 void MainWindow::on_VsStart_editingFinished() {
 }
 
-void MainWindow::on_Stop_clicked() {
-    stop=true;
+void MainWindow::on_Stop_clicked()
+{
+    RequestOperation((Operation_t) Stop);
 }
 
 

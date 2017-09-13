@@ -33,7 +33,8 @@ struct results_t
     float mu_b;
 };
 
-struct plotInfo_t {
+struct plotInfo_t
+{
     int VaSteps;
     int VsSteps;
     int VgSteps;
@@ -43,14 +44,20 @@ struct plotInfo_t {
     float VsEnd;
     float VgStart;
     float VgEnd;
-    QList<results_t> * dataSet;
+    QList<results_t> *dataSet;
     QString tube;
     QString type;
-    QList<QPen> * penList;
+    QList<QPen> *penList;
     bool penChange;
-
-
 };
 
+enum Operation_t
+{
+    Stop,
+    Probe,
+    Ping,
+    ReadADC,
+    Start
+};
 
 #endif // TYPEDEFS_H
