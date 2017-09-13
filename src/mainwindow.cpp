@@ -97,7 +97,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     timer = NULL;
     status = Idle;
-    stop = false;
     doStop = false;
     doStart = false;
     sendADC = false;
@@ -828,17 +827,7 @@ void MainWindow::RxData()
         }
         case Heating:
         {
-            if (stop)
-            {
-                stop = false;
-                status = HeatOff;
-                HV_Discharge_Timer = 0;
-                ui->HeaterProg->setValue(0);
-                ui->statusBar->showMessage("Heater off");
-                SendFilamentCommand(&CmdRsp, 0);
-                heat = 0;
-            }
-            else if (RxCode == RXSUCCESS)
+            if (RxCode == RXSUCCESS)
             {
                 if (heat <= HEAT_CNT_MAX)
                 {
@@ -862,15 +851,7 @@ void MainWindow::RxData()
             time += TIMER_SET;
             ui->statusBar->showMessage(m);
             delay = options.Delay;
-            if (stop)
-            {
-                stop = false;
-                status = HeatOff;
-                HV_Discharge_Timer = 0;
-                SendFilamentCommand(&CmdRsp, 0);
-                ui->CaptureProg->setValue(0);
-            }
-            else if (time / 1000 == HEAT_WAIT_SECS)
+            if (time / 1000 == HEAT_WAIT_SECS)
             {
                 if (dataStore->length() > 0) dataStore->clear();
                 CreateTestVectors();
@@ -881,18 +862,7 @@ void MainWindow::RxData()
         }
         case Sweep_set:
         {
-            if (stop)
-            {
-                stop = false;
-                status = HeatOff;
-                float v = VaNow > VsNow ? VaNow : VsNow;
-                distime = (int)(DISTIME * v / 400);
-                HV_Discharge_Timer = distime;
-                ui->statusBar->showMessage("Abort:Heater off");
-                SendFilamentCommand(&CmdRsp, 0);
-                ui->CaptureProg->setValue(0);
-            }
-            else if (delay == 0)
+            if (delay == 0)
             {
                 status=hold_ack;
                 ui->statusBar->showMessage("Sweep Measure");
@@ -915,7 +885,6 @@ void MainWindow::RxData()
                 if (VaNow > 425 || VsNow > 425)
                 {
                     ui->statusBar->showMessage("Internal Error: Va or Vs excessive");
-                    stop = false;
                     status = HeatOff;
                     float v = VaNow > VsNow ? VaNow : VsNow;
                     distime = (int)(DISTIME * v / 400);
@@ -941,18 +910,7 @@ void MainWindow::RxData()
         }
         case hold:
         {
-            if (stop)
-            {
-                stop = false;
-                status = HeatOff;
-                float v = VaNow > VsNow ? VaNow : VsNow;
-                distime = (int)(DISTIME * v / 400);
-                HV_Discharge_Timer = distime;
-                ui->statusBar->showMessage("Abort:Heater off");
-                SendFilamentCommand(&CmdRsp, 0);
-                heat = 0;
-            }
-            else if (delay == 0)
+            if (delay == 0)
             {
                 status = Sweep_adc;
                 ui->statusBar->showMessage("Sweep (set measurement parameters)");
@@ -962,7 +920,6 @@ void MainWindow::RxData()
                 if (VaNow > 425 || VsNow > 425)
                 {
                     ui->statusBar->showMessage("Internal Error: Va or Vs excessive");
-                    stop = false;
                     status = HeatOff;
                     float v = VaNow > VsNow ? VaNow : VsNow;
                     distime = (int)(DISTIME * v / 400);
@@ -1083,6 +1040,8 @@ void MainWindow::RxData()
         }
         case HeatOff:
         {
+            if (RxCode != RXIDLE && RxCode != RXSUCCESS) break;
+
             if (HV_Discharge_Timer>0) HV_Discharge_Timer--;
             if (HV_Discharge_Timer == (distime-1))
             {

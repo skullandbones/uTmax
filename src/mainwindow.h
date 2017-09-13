@@ -196,7 +196,6 @@ private:
     int VaStep;
     int curve;
     int heat;
-    bool stop;
     bool doStop;
     bool doStart;
     QTimer *timer;
