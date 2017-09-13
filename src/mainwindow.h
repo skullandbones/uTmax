@@ -184,19 +184,18 @@ private:
     enum Status_t { WaitPing, Heating, Heating_wait00, Heating_wait_adc,
                     Sweep_set, Sweep_adc, Idle, wait_adc,
                     hold_ack, hold, heat_done, HeatOff, read_adc, send_ping,
-                    start_sweep_heater, max_state};
+                    start_sweep_heater, wait_stop, max_state};
     Status_t status;
     QString status_name[max_state] = {"WaitPing", "Heating", "Heating_wait00", "Heating_wait_adc",
                                       "Sweep_set", "Sweep_adc", "Idle", "wait_adc",
                                       "hold_ack", "hold", "heat_done", "HeatOff", "read_adc", "send_ping",
-                                      "start_sweep_heater"};
+                                      "start_sweep_heater", "wait_stop"};
 
     int VsStep;
     int VgStep;
     int VaStep;
     int curve;
     int heat;
-    bool stop;
     bool doStop;
     bool doStart;
     QTimer *timer;
