@@ -579,7 +579,6 @@ void MainWindow::RxData()
     static int time;
     static int delay;
     static int HV_Discharge_Timer;
-    char buf[30];
     //I Limits         200,  175,  150,  125, 100,    50,   25,   12,  7mA,  Off
     static int lim[]={0x8f, 0x8d, 0xad, 0xab, 0x84, 0xa4, 0xa2, 0xa1, 0x80, 0x00};
     static int avg[]={0x40, 1, 2, 4, 8, 16, 32, 0x40};
