@@ -570,6 +570,7 @@ void MainWindow::SendADCCommand(CommandResponse_t *pSendCmdRsp)
 // The main control process
 void MainWindow::RxData()
 {
+    static int timeIt;
     static int time;
     static int delay;
     static int HV_Discharge_Timer;
@@ -704,7 +705,7 @@ void MainWindow::RxData()
                 case Heating:
                 {
                     qDebug() << "RxData: Jump to max heating";
-                    heat = HEAT_CNT_MAX;
+                    timeIt = HEAT_CNT_MAX;
                     break;
                 }
                 case heat_done:
@@ -751,14 +752,12 @@ void MainWindow::RxData()
     {
         case send_ping:
         {
-            heat = 0;
             SendEndMeasurementCommand(&CmdRsp);
             status = WaitPing;
             break;
         }
         case read_adc:
         {
-            heat = 0;
             SendADCCommand(&CmdRsp);
             status = wait_adc;
             break;
@@ -774,7 +773,6 @@ void MainWindow::RxData()
             curve = 0;
 
             ui->statusBar->showMessage("Heating setup");
-            heat = 0;
             ui->HeaterProg->setValue(1);
             ui->CaptureProg->setValue(1);
 
@@ -833,11 +831,10 @@ void MainWindow::RxData()
             {
                 VgNow=ui->VgStart->text().toFloat();
                 saveADCInfo(&response);
-                heat = 0;
                 status = Heating;
                 ui->statusBar->showMessage("Heating");
                 SendFilamentCommand(&CmdRsp, 0);
-                heat = 1;
+                timeIt = 1;
             }
             break;
         }
@@ -845,13 +842,13 @@ void MainWindow::RxData()
         {
             if (RxCode == RXSUCCESS)
             {
-                if (heat <= HEAT_CNT_MAX)
+                if (timeIt <= HEAT_CNT_MAX)
                 {
-                    ui->HeaterProg->setValue((100 * heat) / HEAT_CNT_MAX);
-                    VfADC = GetVf((float)heat);
+                    ui->HeaterProg->setValue((100 * timeIt) / HEAT_CNT_MAX);
+                    VfADC = GetVf((float)timeIt);
                     if (VfADC > 1023) VfADC = 1023;
                     SendFilamentCommand(&CmdRsp, (uint16_t)VfADC);
-                    heat++;
+                    timeIt++;
                 }
                 else
                 {
@@ -907,7 +904,6 @@ void MainWindow::RxData()
                     HV_Discharge_Timer = distime;
                     ui->statusBar->showMessage("Abort:Heater off");
                     SendFilamentCommand(&CmdRsp, 0);
-                    heat=0;
                     break;
                 }
                 VaADC = GetVa(VaNow);
@@ -942,7 +938,6 @@ void MainWindow::RxData()
                     HV_Discharge_Timer = distime;
                     ui->statusBar->showMessage("Abort:Heater off");
                     SendFilamentCommand(&CmdRsp, 0);
-                    heat = 0;
                     break;
                 }
 
@@ -1050,7 +1045,6 @@ void MainWindow::RxData()
             {
                 ui->HeaterProg->setValue(0);
                 SendEndMeasurementCommand(&CmdRsp);
-                heat = 0;
                 if (ui->checkAutoNumber->isChecked())
                 {
                     if (!ui->checkQuickTest->isChecked()) on_actionSave_plot_triggered();
