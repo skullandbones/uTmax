@@ -581,7 +581,6 @@ void MainWindow::SendADCCommand(CommandResponse_t *pSendCmdRsp)
 void MainWindow::RxData()
 {
     static int timeIt;
-    static int time;
     static int delay;
     static int HV_Discharge_Timer;
     //I Limits         200,  175,  150,  125, 100,    50,   25,   12,  7mA,  Off
@@ -773,8 +772,6 @@ void MainWindow::RxData()
         }
         case start_sweep_heater:
         {
-            time = 0;
-
             StoreData(false); // Init data store
             VsStep = 0;
             VgStep = 0;
@@ -854,6 +851,7 @@ void MainWindow::RxData()
                 else
                 {
                     ui->HeaterProg->setValue(100);
+                    timeIt = 0;
                     status = heat_done;
                 }
             }
@@ -861,15 +859,18 @@ void MainWindow::RxData()
         }
         case heat_done:
         {
-            QString m = QString("Press 'start' when ready; heating for %1 secs").arg(time / 1000);
-            time += TIMER_SET;
-            ui->statusBar->showMessage(m);
-            delay = options.Delay;
-            if (time / 1000 == HEAT_WAIT_SECS)
+            if (timeIt / 1000 < HEAT_WAIT_SECS)
+            {
+                timeIt += TIMER_SET;
+                QString m = QString("Press 'start' when ready; heating for %1 secs").arg(timeIt / 1000);
+                ui->statusBar->showMessage(m);
+            }
+            else
             {
                 if (dataStore->length() > 0) dataStore->clear();
                 CreateTestVectors();
                 curve = 0;
+                delay = options.Delay;
                 status = Sweep_set;
             }
             break;
