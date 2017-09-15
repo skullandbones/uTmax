@@ -303,7 +303,7 @@ void MainWindow::StartUpMachine()
         qDebug() << "StartUpMachine: Starting up the machine!";
         timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
-        timer->start(TIMER_SET);
+        timer->start(STATE_PERIOD);
     }
 }
 
@@ -860,7 +860,7 @@ void MainWindow::RxData()
         {
             if (timeIt / 1000 < HEAT_WAIT_SECS)
             {
-                timeIt += TIMER_SET;
+                timeIt += STATE_PERIOD;
                 QString m = QString("Press 'start' when ready; heating for %1 secs").arg(timeIt / 1000);
                 ui->statusBar->showMessage(m);
             }
