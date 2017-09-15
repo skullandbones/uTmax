@@ -8,7 +8,7 @@
 #define PING_TIMEOUT (5 * TICKS_PER_SEC)
 
 #define HEAT_CNT_MAX (10 * TICKS_PER_SEC)
-#define HEAT_WAIT_SECS 60
+#define WARMUP_TICKS_MAX (60 * TICKS_PER_SEC)
 
 
 #include <QMainWindow>
