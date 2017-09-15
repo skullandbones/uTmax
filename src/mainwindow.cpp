@@ -859,10 +859,10 @@ void MainWindow::RxData()
         }
         case heat_done:
         {
-            if (timeIt / 1000 < HEAT_WAIT_SECS)
+            if (timeIt < WARMUP_TICKS_MAX)
             {
-                timeIt += STATE_PERIOD;
-                QString m = QString("Press 'start' when ready; heating for %1 secs").arg(timeIt / 1000);
+                timeIt++;
+                QString m = QString("Press 'start' when ready; heating for %1 secs").arg(timeIt / TICKS_PER_SEC);
                 ui->statusBar->showMessage(m);
             }
             else
