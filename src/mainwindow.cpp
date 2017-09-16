@@ -584,7 +584,14 @@ void MainWindow::RxData()
 
     // ---------------------------------------------------
     // Sanity check that the port is still OK
-    if (!portInUse || !portInUse->isOpen())
+    if (!portInUse)
+    {
+        ui->statusBar->showMessage("ERROR: The serial port is not available");
+        StopTheMachine();
+        return;
+    }
+
+    if (portInUse && !portInUse->isOpen())
     {
         ui->statusBar->showMessage("ERROR: The serial port closed unexpectedly!");
         StopTheMachine();
