@@ -1022,6 +1022,13 @@ void MainWindow::RxData()
                 QString msg = QString("Countdown for HV to discharge: %1").arg(HV_Discharge_Timer);
                 ui->statusBar->showMessage(msg);
             }
+            break;
+        }
+        default:
+        {
+            qCritical() << "ERROR: unknown status:" << status;
+            StopTheMachine();
+            break;
         }
     }
 }
