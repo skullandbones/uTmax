@@ -191,6 +191,13 @@ private:
                                       "hold_ack", "hold", "heat_done", "HeatOff", "read_adc", "send_ping",
                                       "start_sweep_heater", "wait_stop"};
 
+    struct interrupted_t
+    {
+        bool cmd;
+        Status_t status;
+        QByteArray response;
+    };
+
     int VsStep;
     int VgStep;
     int VaStep;

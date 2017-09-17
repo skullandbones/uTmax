@@ -581,6 +581,7 @@ void MainWindow::RxData()
     static int distime;
     RxStatus_t RxCode;
     static bool repeatTest = false;
+    static interrupted_t interrupted = {false, Idle, ""};
 
     // ---------------------------------------------------
     // Sanity check that the port is still OK
@@ -623,7 +624,7 @@ void MainWindow::RxData()
 
     // ---------------------------------------------------
     // Deal with user requests, communications must be idle
-    if (RxCode == RXIDLE || RxCode == RXSUCCESS)
+    if ((RxCode == RXIDLE || RxCode == RXSUCCESS) && !interrupted.cmd)
     {
         if (doStop == true)
         {
@@ -670,12 +671,18 @@ void MainWindow::RxData()
         else if (sendPing == true)
         {
             qDebug() << "RxData: Action sendPing";
+            interrupted.cmd = true;
+            interrupted.status = status;
+            interrupted.response = response;
             status = send_ping;
             sendPing = false;
         }
         else if (sendADC == true)
         {
             qDebug() << "RxData: Action sendADC";
+            interrupted.cmd = true;
+            interrupted.status = status;
+            interrupted.response = response;
             status = read_adc;
             sendADC = false;
         }
@@ -723,6 +730,16 @@ void MainWindow::RxData()
                 }
             }
         }
+    }
+
+    // Instead of going to Idle, spoof the interrupted command response
+    if (interrupted.cmd && status == Idle)
+    {
+        interrupted.cmd = false;
+        RxCode = RXSUCCESS;
+        response = interrupted.response;
+        status = interrupted.status;
+        qDebug() << "Return from interrupted state:" << status_name[status];
     }
 
     // ---------------------------------------------------
