@@ -1046,6 +1046,12 @@ void MainWindow::RxData()
                 ui->statusBar->showMessage(msg);
             }
         }
+        default:
+        {
+            qDebug() << "ERROR: unknown status:" << status;
+            StopTheMachine();
+            break;
+        }
     }
 }
 
