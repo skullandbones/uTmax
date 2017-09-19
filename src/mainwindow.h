@@ -1,12 +1,14 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#define TIMER_SET 500
-#define ADC_READ_TIMEOUT (30000/TIMER_SET)
-#define PING_TIMEOUT (5000/TIMER_SET)
+#define STATE_PERIOD 500
+#define TICKS_PER_SEC (1000 / STATE_PERIOD)
 
-#define HEAT_CNT_MAX 20
-#define HEAT_WAIT_SECS 60
+#define ADC_READ_TIMEOUT (30 * TICKS_PER_SEC)
+#define PING_TIMEOUT (5 * TICKS_PER_SEC)
+
+#define HEAT_CNT_MAX (10 * TICKS_PER_SEC)
+#define WARMUP_TICKS_MAX (60 * TICKS_PER_SEC)
 
 
 #include <QMainWindow>
@@ -184,18 +186,24 @@ private:
     enum Status_t { WaitPing, Heating, Heating_wait00, Heating_wait_adc,
                     Sweep_set, Sweep_adc, Idle, wait_adc,
                     hold_ack, hold, heat_done, HeatOff, read_adc, send_ping,
-                    start_sweep_heater, wait_stop, max_state};
+                    start_sweep_heater, wait_stop, Discharge, max_state};
     Status_t status;
     QString status_name[max_state] = {"WaitPing", "Heating", "Heating_wait00", "Heating_wait_adc",
                                       "Sweep_set", "Sweep_adc", "Idle", "wait_adc",
                                       "hold_ack", "hold", "heat_done", "HeatOff", "read_adc", "send_ping",
-                                      "start_sweep_heater", "wait_stop"};
+                                      "start_sweep_heater", "wait_stop", "Discharge"};
+
+    struct interrupted_t
+    {
+        bool cmd;
+        Status_t status;
+        QByteArray response;
+    };
 
     int VsStep;
     int VgStep;
     int VaStep;
     int curve;
-    int heat;
     bool doStop;
     bool doStart;
     QTimer *timer;
