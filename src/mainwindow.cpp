@@ -641,8 +641,8 @@ void MainWindow::RxData()
                     ui->HeaterProg->setValue(0);
                     ui->statusBar->showMessage("Heater off");
                     SendFilamentCommand(&CmdRsp, 0);
-                    status = wait_stop;
-                    break;
+                    status = HeatOff;
+                    return;
                 }
                 case Sweep_set:
                 case Sweep_adc:
@@ -655,8 +655,8 @@ void MainWindow::RxData()
                     ui->statusBar->showMessage("Abort:Heater off");
                     SendFilamentCommand(&CmdRsp, 0);
                     ui->CaptureProg->setValue(0);
-                    status = wait_stop;
-                    break;
+                    status = HeatOff;
+                    return;
                 }
                 default:
                 {
@@ -774,14 +774,6 @@ void MainWindow::RxData()
                                         Ir[options.IsRange], Ir[options.IaRange]);
 
             status = Heating_wait00;
-            break;
-        }
-        case wait_stop:
-        {
-            if (RxCode == RXSUCCESS)
-            {
-                status = HeatOff;
-            }
             break;
         }
         case Idle:
@@ -1032,7 +1024,7 @@ void MainWindow::RxData()
         }
         case HeatOff:
         {
-            if (RxCode != RXIDLE && RxCode != RXSUCCESS) break;
+            if (RxCode != RXSUCCESS) break;
 
             if (timeIt)
             {
