@@ -314,8 +314,12 @@ private:
         RXCONTINUE,
         RXIDLE,
         RXTIMEOUT,
-        RXINVALID
+        RXINVALID,
+        RXMAX
     };
+
+    QString RxStatusName[RXMAX] = {"RXSUCCESS", "RXCONTINUE", "RXIDLE",
+                                   "RXTIMEOUT", "RXINVALID"};
 
     // Function protoypes
     void PenUpdate();
