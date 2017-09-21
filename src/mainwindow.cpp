@@ -457,7 +457,6 @@ void MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response, RxS
     }
     else
     {
-        qDebug() << "RxPkt: RXIDLE";
         *pRxStatus = RXIDLE;
     }
 
@@ -490,6 +489,8 @@ void MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response, RxS
         pSendCmdRsp->txState = TxIdle;
         pSendCmdRsp->rxState = RxIdle;
     }
+
+    qDebug() << "RxPkt: RxStatus is:" << RxStatusName[*pRxStatus];
 }
 
 void MainWindow::SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint8_t limits, uint8_t averaging,
