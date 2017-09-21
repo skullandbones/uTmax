@@ -327,6 +327,11 @@ void MainWindow::SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxCha
 
     if (txLoad)
     {
+        if (pSendCmdRsp) {
+            if (pSendCmdRsp->txState != TxIdle)
+                qDebug() << "ERROR: SendCommand: Attempting to send new message before previous message completed!" \
+                         << pSendCmdRsp->txState;
+        }
         pSendCmdRsp = pCmdRsp;
         pSendCmdRsp->txState = TxLoaded;
     }
