@@ -627,7 +627,6 @@ void MainWindow::RxData()
         if (doStop == true)
         {
             qDebug() << "RxData: Action doStop";
-            doStop = false;
 
             switch (status)
             {
