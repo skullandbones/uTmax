@@ -1,7 +1,38 @@
 Dean's notes on trying to get uTmax to run or build.
 
+Information for uTmax 2.x
+=========================
+
+Prerequisites
+-------------
+
+Mageia 6 (Linux 4.9 kernel)
+Qt 5
+
+uTmax 2.x is built using the Qt Creator environment.
+
+Ensure your host has the following development tools installed before running
+Qt Creator:
+
+qt-creator
+gcc
+g++ (C++ for gcc)
+gdb
+qmake
+
+The following Qt libraries are needed:
+
+(using Mageia 6)
+lib64qt5serialport-devel
+
+
+
+
+OLD INFORMATION (relates to the original uTmax 1.x)
+===================================================
+
 Building using qmake and mmake
-==============================
+------------------------------
 
 To use the shared libaries from the current directory use:
 export LD_LIBRARY_PATH=./
@@ -53,7 +84,7 @@ Used real serial port /dev/ttyS1 which seems to be more reliable than USB to ser
 
 
 Using Qt Creator 4.3.2 on Qt 5.4.2
-==================================
+----------------------------------
 
 Instead of using the command line to build etc. use the Qt Creator IDE.
 
@@ -126,7 +157,7 @@ to /usr/bin/qmake.
 
 
 3rd party GSL
-=============
+-------------
 
 This code comes from https://www.gnu.org/software/gsl/ and is a GNU free
 scientific maths library functions for C and C++
@@ -137,7 +168,7 @@ Mageia 5 has 1.16 available as a package
 
 
 qmake
-=====
+-----
 
 qmake needs the .ui files
 
