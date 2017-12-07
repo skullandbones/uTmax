@@ -327,6 +327,11 @@ void MainWindow::SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxCha
 
     if (txLoad)
     {
+        if (pSendCmdRsp) {
+            if (pSendCmdRsp->txState != TxIdle)
+                qDebug() << "ERROR: SendCommand: Attempting to send new message before previous message completed!" \
+                         << pSendCmdRsp->txState;
+        }
         pSendCmdRsp = pCmdRsp;
         pSendCmdRsp->txState = TxLoaded;
     }
@@ -451,7 +456,6 @@ void MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response, RxS
     }
     else
     {
-        qDebug() << "RxPkt: RXIDLE";
         *pRxStatus = RXIDLE;
     }
 
@@ -484,6 +488,8 @@ void MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response, RxS
         pSendCmdRsp->txState = TxIdle;
         pSendCmdRsp->rxState = RxIdle;
     }
+
+    qDebug() << "RxPkt: RxStatus is:" << RxStatusName[*pRxStatus];
 }
 
 void MainWindow::SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint8_t limits, uint8_t averaging,
@@ -627,7 +633,6 @@ void MainWindow::RxData()
         if (doStop == true)
         {
             qDebug() << "RxData: Action doStop";
-            doStop = false;
 
             switch (status)
             {
@@ -641,8 +646,8 @@ void MainWindow::RxData()
                     ui->HeaterProg->setValue(0);
                     ui->statusBar->showMessage("Heater off");
                     SendFilamentCommand(&CmdRsp, 0);
-                    status = wait_stop;
-                    break;
+                    status = HeatOff;
+                    return;
                 }
                 case Sweep_set:
                 case Sweep_adc:
@@ -655,8 +660,8 @@ void MainWindow::RxData()
                     ui->statusBar->showMessage("Abort:Heater off");
                     SendFilamentCommand(&CmdRsp, 0);
                     ui->CaptureProg->setValue(0);
-                    status = wait_stop;
-                    break;
+                    status = HeatOff;
+                    return;
                 }
                 default:
                 {
@@ -774,14 +779,6 @@ void MainWindow::RxData()
                                         Ir[options.IsRange], Ir[options.IaRange]);
 
             status = Heating_wait00;
-            break;
-        }
-        case wait_stop:
-        {
-            if (RxCode == RXSUCCESS)
-            {
-                status = HeatOff;
-            }
             break;
         }
         case Idle:
@@ -1032,7 +1029,7 @@ void MainWindow::RxData()
         }
         case HeatOff:
         {
-            if (RxCode != RXIDLE && RxCode != RXSUCCESS) break;
+            if (RxCode != RXSUCCESS) break;
 
             if (timeIt)
             {

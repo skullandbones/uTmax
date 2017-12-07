@@ -186,12 +186,12 @@ private:
     enum Status_t { WaitPing, Heating, Heating_wait00, Heating_wait_adc,
                     Sweep_set, Sweep_adc, Idle, wait_adc,
                     hold_ack, hold, heat_done, HeatOff, read_adc, send_ping,
-                    start_sweep_heater, wait_stop, Discharge, max_state};
+                    start_sweep_heater, Discharge, max_state};
     Status_t status;
     QString status_name[max_state] = {"WaitPing", "Heating", "Heating_wait00", "Heating_wait_adc",
                                       "Sweep_set", "Sweep_adc", "Idle", "wait_adc",
                                       "hold_ack", "hold", "heat_done", "HeatOff", "read_adc", "send_ping",
-                                      "start_sweep_heater", "wait_stop", "Discharge"};
+                                      "start_sweep_heater", "Discharge"};
 
     struct interrupted_t
     {
@@ -314,8 +314,12 @@ private:
         RXCONTINUE,
         RXIDLE,
         RXTIMEOUT,
-        RXINVALID
+        RXINVALID,
+        RXMAX
     };
+
+    QString RxStatusName[RXMAX] = {"RXSUCCESS", "RXCONTINUE", "RXIDLE",
+                                   "RXTIMEOUT", "RXINVALID"};
 
     // Function protoypes
     void PenUpdate();
