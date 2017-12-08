@@ -37,7 +37,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>utMax 1.0e</string>
+   <string>utMax 1.1</string>
   </property>
   <property name="windowIcon">
    <iconset>
@@ -204,7 +204,7 @@
           <x>10</x>
           <y>20</y>
           <width>451</width>
-          <height>62</height>
+          <height>59</height>
          </rect>
         </property>
         <layout class="QGridLayout" name="gridLayout_4">
@@ -354,7 +354,7 @@
          <x>170</x>
          <y>150</y>
          <width>471</width>
-         <height>171</height>
+         <height>221</height>
         </rect>
        </property>
        <property name="title">
@@ -365,11 +365,17 @@
          <rect>
           <x>10</x>
           <y>20</y>
-          <width>441</width>
-          <height>141</height>
+          <width>451</width>
+          <height>161</height>
          </rect>
         </property>
-        <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0,0" columnstretch="0,0,0,0,0,0,0">
+        <property name="maximumSize">
+         <size>
+          <width>460</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0,0" columnstretch="0,0,0,0,0,0,0,0,0">
          <property name="sizeConstraint">
           <enum>QLayout::SetDefaultConstraint</enum>
          </property>
@@ -382,11 +388,867 @@
          <property name="spacing">
           <number>1</number>
          </property>
-         <item row="1" column="4">
-          <widget class="QLineEdit" name="Vca">
+         <item row="3" column="1">
+          <widget class="QLineEdit" name="VgStart">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set initial grid voltage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="text">
+            <string>0</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="3">
+          <widget class="QLineEdit" name="VgSteps">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set number of grid voltage steps &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="text">
+            <string>4</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="3">
+          <widget class="QLabel" name="label_7">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>40</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Steps</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QLabel" name="label_6">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>40</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>End</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="4">
+          <widget class="QLineEdit" name="Vcs">
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>Anode B/ Grid 2 quick test center voltage</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+	background-color: rgb(0, 255, 0);
+	border: 1px solid gray;
+}
+
+QLineEdit:hover {
+	background-color: rgb(0, 255, 0);
+	border: 1px solid gray;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>200</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="5">
+          <widget class="QLabel" name="label_15">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>40</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: rgb(0, 220, 0);</string>
+           </property>
+           <property name="text">
+            <string>%</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="2">
+          <widget class="QLineEdit" name="VgEnd">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set final grid voltage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="text">
+            <string>-40</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="4">
+          <widget class="QLabel" name="label_14">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>40</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: rgb(0, 220, 0);</string>
+           </property>
+           <property name="text">
+            <string>Center</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="5">
+          <widget class="QLineEdit" name="DeltaVg">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Anode quick test swing %&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+	background-color: rgb(0, 255, 0);
+	border: 1px solid gray;
+}
+
+QLineEdit:hover {
+	background-color: rgb(0, 255, 0);
+	border: 1px solid gray;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>10</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="4">
+          <widget class="QLineEdit" name="Vcg">
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>Grid 1 quick test center voltage</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+	background-color: rgb(0, 255, 0);
+	border: 1px solid gray;
+}
+
+QLineEdit:hover {
+	background-color: rgb(0, 255, 0);
+	border: 1px solid gray;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>-10</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="5">
+          <widget class="QLineEdit" name="DeltaVa">
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>Anode quick test swing %</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+	background-color: rgb(0, 255, 0);
+	border: 1px solid gray;
+}
+
+QLineEdit:hover {
+	background-color: rgb(0, 255, 0);
+	border: 1px solid gray;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>10</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <widget class="QLineEdit" name="PowLim">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set final grid voltage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="text">
+            <string>1</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="8">
+          <widget class="QLineEdit" name="EmmVa">
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+	background-color: rgb(255, 255, 0);
+	border: 1px solid gray;
+}
+
+QLineEdit:hover {
+	background-color: rgb(255, 255, 0);
+	border: 1px solid gray;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>100</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="8">
+          <widget class="QLabel" name="label_2">
+           <property name="minimumSize">
+            <size>
+             <width>50</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: rgb(220, 220, 0);</string>
+           </property>
+           <property name="text">
+            <string>Bias</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="5">
+          <widget class="QLineEdit" name="DeltaVs">
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>Anode quick test swing %</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+	background-color: rgb(0, 255, 0);
+	border: 1px solid gray;
+}
+
+QLineEdit:hover {
+	background-color: rgb(0, 255, 0);
+	border: 1px solid gray;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>10</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="2" colspan="2">
+          <widget class="QCheckBox" name="checkVsEqVa">
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Force Vg2=Va. Useful for triode testing. This is usually set automatically by the selected tube type.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="layoutDirection">
+            <enum>Qt::RightToLeft</enum>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">margin-left:0%;
+margin-right:0%;</string>
+           </property>
+           <property name="text">
+            <string>Va/g2=Va1</string>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="0">
+          <widget class="QLabel" name="label">
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>45</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Power</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="8">
+          <widget class="QLineEdit" name="EmmVs">
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+	background-color: rgb(255, 255, 0);
+	border: 1px solid gray;
+}
+
+QLineEdit:hover {
+	background-color: rgb(255, 255, 0);
+	border: 1px solid gray;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>300</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="6">
+          <widget class="QLabel" name="gm_label">
+           <property name="minimumSize">
+            <size>
+             <width>50</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: rgb(0, 220, 0);</string>
+           </property>
+           <property name="text">
+            <string>Gm mS</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="6">
+          <widget class="QLineEdit" name="gm1Typ">
+           <property name="minimumSize">
+            <size>
+             <width>50</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+	background-color: rgb(0, 235, 0);
+	border: 1px solid gray;
+}
+
+QLineEdit:hover {
+	background-color: rgb(0, 235, 0);
+	border: 1px solid gray;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>5</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="label_5">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>40</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Start</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="6">
+          <widget class="QLineEdit" name="gm2Typ">
+           <property name="minimumSize">
+            <size>
+             <width>50</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+	background-color: rgb(0, 235, 0);
+	border: 1px solid gray;
+}
+
+QLineEdit:hover {
+	background-color: rgb(0, 235, 0);
+	border: 1px solid gray;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>5</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="7">
+          <widget class="QLineEdit" name="gm2Delta">
+           <property name="minimumSize">
+            <size>
+             <width>50</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+	background-color: rgb(0, 235, 0);
+	border: 1px solid gray;
+}
+
+QLineEdit:hover {
+	background-color: rgb(0, 235, 0);
+	border: 1px solid gray;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>25</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="7">
+          <widget class="QLineEdit" name="gm1Delta">
+           <property name="minimumSize">
+            <size>
+             <width>50</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+	background-color: rgb(0, 235, 0);
+	border: 1px solid gray;
+}
+
+QLineEdit:hover {
+	background-color: rgb(0, 235, 0);
+	border: 1px solid gray;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>25</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="7">
+          <widget class="QLabel" name="label_17">
+           <property name="minimumSize">
+            <size>
+             <width>50</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: rgb(0, 220, 0);</string>
+           </property>
+           <property name="text">
+            <string>%</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="4" colspan="2">
+          <widget class="QCheckBox" name="checkQuickTest">
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable quick test&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="layoutDirection">
+            <enum>Qt::RightToLeft</enum>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">margin-left:0%;
+margin-right:0%;</string>
+           </property>
+           <property name="text">
+            <string>Quick Test</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="4">
+          <widget class="QLineEdit" name="Vca">
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
              <height>19</height>
             </size>
            </property>
@@ -421,9 +1283,15 @@ QLineEdit:hover {
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
+             <width>460</width>
              <height>19</height>
             </size>
            </property>
@@ -446,9 +1314,15 @@ QLineEdit:hover {
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
+             <width>460</width>
              <height>19</height>
             </size>
            </property>
@@ -463,28 +1337,31 @@ QLineEdit:hover {
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
-          <widget class="QLabel" name="label_5">
+         <item row="1" column="3">
+          <widget class="QLineEdit" name="VaSteps">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
+             <width>460</width>
              <height>19</height>
             </size>
            </property>
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set number of anode (plate) voltage steps &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="text">
-            <string>Start</string>
+            <string>10</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -499,9 +1376,15 @@ QLineEdit:hover {
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
+             <width>460</width>
              <height>19</height>
             </size>
            </property>
@@ -510,40 +1393,6 @@ QLineEdit:hover {
            </property>
            <property name="text">
             <string>1</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="0">
-          <widget class="QLabel" name="label_10">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>60</width>
-             <height>0</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="text">
-            <string>Vh</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -560,13 +1409,13 @@ QLineEdit:hover {
            </property>
            <property name="minimumSize">
             <size>
-             <width>60</width>
+             <width>10</width>
              <height>0</height>
             </size>
            </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
+             <width>45</width>
              <height>19</height>
             </size>
            </property>
@@ -584,75 +1433,34 @@ QLineEdit:hover {
            </property>
           </widget>
          </item>
-         <item row="1" column="2">
-          <widget class="QLineEdit" name="VaEnd">
+         <item row="4" column="0">
+          <widget class="QLabel" name="label_10">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
-           <property name="maximumSize">
+           <property name="minimumSize">
             <size>
-             <width>200</width>
-             <height>19</height>
+             <width>10</width>
+             <height>0</height>
             </size>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set final anode voltage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="text">
-            <string>200</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QLineEdit" name="VaStart">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
            </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
+             <width>45</width>
              <height>19</height>
             </size>
            </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set initial anode voltage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
            </property>
            <property name="text">
-            <string>4</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="3">
-          <widget class="QLineEdit" name="VaSteps">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set number of anode (plate) voltage steps &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="text">
-            <string>10</string>
+            <string>Vh</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -667,9 +1475,15 @@ QLineEdit:hover {
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
+             <width>460</width>
              <height>19</height>
             </size>
            </property>
@@ -678,6 +1492,37 @@ QLineEdit:hover {
            </property>
            <property name="text">
             <string>6.3</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QLineEdit" name="VaEnd">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>460</width>
+             <height>19</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set final anode voltage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="text">
+            <string>200</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -694,13 +1539,13 @@ QLineEdit:hover {
            </property>
            <property name="minimumSize">
             <size>
-             <width>60</width>
+             <width>40</width>
              <height>0</height>
             </size>
            </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
+             <width>45</width>
              <height>19</height>
             </size>
            </property>
@@ -718,28 +1563,31 @@ QLineEdit:hover {
            </property>
           </widget>
          </item>
-         <item row="0" column="2">
-          <widget class="QLabel" name="label_6">
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="VaStart">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+           <property name="minimumSize">
+            <size>
+             <width>10</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
+             <width>460</width>
              <height>19</height>
             </size>
            </property>
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set initial anode voltage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="text">
-            <string>End</string>
+            <string>4</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -756,13 +1604,13 @@ QLineEdit:hover {
            </property>
            <property name="minimumSize">
             <size>
-             <width>60</width>
+             <width>10</width>
              <height>0</height>
             </size>
            </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
+             <width>45</width>
              <height>19</height>
             </size>
            </property>
@@ -780,482 +1628,28 @@ QLineEdit:hover {
            </property>
           </widget>
          </item>
-         <item row="0" column="3">
-          <widget class="QLabel" name="label_7">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="text">
-            <string>Steps</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="1">
-          <widget class="QLineEdit" name="VgStart">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set initial grid voltage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="text">
-            <string>0</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="2">
-          <widget class="QLineEdit" name="VgEnd">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set final grid voltage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="text">
-            <string>-40</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="3">
-          <widget class="QLineEdit" name="VgSteps">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set number of grid voltage steps &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="text">
-            <string>4</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="4">
-          <widget class="QLineEdit" name="Vcs">
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>Anode B/ Grid 2 quick test center voltage</string>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QLineEdit {
-	background-color: rgb(0, 255, 0);
-	border: 1px solid gray;
-}
-
-QLineEdit:hover {
-	background-color: rgb(0, 255, 0);
-	border: 1px solid gray;
-}
-</string>
-           </property>
-           <property name="text">
-            <string>200</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="4">
-          <widget class="QLineEdit" name="Vcg">
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>Grid 1 quick test center voltage</string>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QLineEdit {
-	background-color: rgb(0, 255, 0);
-	border: 1px solid gray;
-}
-
-QLineEdit:hover {
-	background-color: rgb(0, 255, 0);
-	border: 1px solid gray;
-}
-</string>
-           </property>
-           <property name="text">
-            <string>-10</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="4">
-          <widget class="QLabel" name="label_14">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">background-color: rgb(0, 220, 0);</string>
-           </property>
-           <property name="text">
-            <string>Center</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="5">
-          <widget class="QLabel" name="label_15">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">background-color: rgb(0, 220, 0);</string>
-           </property>
-           <property name="text">
-            <string>%</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="5">
-          <widget class="QLineEdit" name="DeltaVa">
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>Anode quick test swing %</string>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QLineEdit {
-	background-color: rgb(0, 255, 0);
-	border: 1px solid gray;
-}
-
-QLineEdit:hover {
-	background-color: rgb(0, 255, 0);
-	border: 1px solid gray;
-}
-</string>
-           </property>
-           <property name="text">
-            <string>10</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="5">
-          <widget class="QLineEdit" name="DeltaVs">
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>Anode quick test swing %</string>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QLineEdit {
-	background-color: rgb(0, 255, 0);
-	border: 1px solid gray;
-}
-
-QLineEdit:hover {
-	background-color: rgb(0, 255, 0);
-	border: 1px solid gray;
-}
-</string>
-           </property>
-           <property name="text">
-            <string>10</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="5">
-          <widget class="QLineEdit" name="DeltaVg">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Anode quick test swing %&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QLineEdit {
-	background-color: rgb(0, 255, 0);
-	border: 1px solid gray;
-}
-
-QLineEdit:hover {
-	background-color: rgb(0, 255, 0);
-	border: 1px solid gray;
-}
-</string>
-           </property>
-           <property name="text">
-            <string>10</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="5" column="0">
-          <widget class="QLabel" name="label">
+         <item row="3" column="8">
+          <widget class="QLineEdit" name="EmmVg">
            <property name="minimumSize">
             <size>
-             <width>60</width>
+             <width>10</width>
              <height>0</height>
             </size>
            </property>
            <property name="maximumSize">
             <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="text">
-            <string>Power</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="5" column="1">
-          <widget class="QLineEdit" name="PowLim">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set final grid voltage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="text">
-            <string>1</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="6">
-          <widget class="QLineEdit" name="EmmVa">
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
+             <width>460</width>
              <height>19</height>
             </size>
            </property>
            <property name="styleSheet">
             <string notr="true">QLineEdit {
-	background-color: rgb(240, 240, 0);
+	background-color: rgb(255, 255, 0);
 	border: 1px solid gray;
 }
 
 QLineEdit:hover {
-	background-color: rgb(240, 240, 0);
-	border: 1px solid gray;
-}
-</string>
-           </property>
-           <property name="text">
-            <string>100</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="6">
-          <widget class="QLabel" name="label_2">
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">background-color: rgb(200, 200, 0);</string>
-           </property>
-           <property name="text">
-            <string>Emmision</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="6">
-          <widget class="QLineEdit" name="EmmVs">
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QLineEdit {
-	background-color: rgb(240, 240, 0);
-	border: 1px solid gray;
-}
-
-QLineEdit:hover {
-	background-color: rgb(240, 240, 0);
-	border: 1px solid gray;
-}
-</string>
-           </property>
-           <property name="text">
-            <string>300</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="6">
-          <widget class="QLineEdit" name="EmmVg">
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QLineEdit {
-	background-color: rgb(240, 240, 0);
-	border: 1px solid gray;
-}
-
-QLineEdit:hover {
-	background-color: rgb(240, 240, 0);
+	background-color: rgb(255, 255, 0);
 	border: 1px solid gray;
 }
 </string>
@@ -1265,93 +1659,6 @@ QLineEdit:hover {
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="5" column="2" colspan="2">
-          <widget class="QCheckBox" name="checkVsEqVa">
-           <property name="maximumSize">
-            <size>
-             <width>120</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Force Vg2=Va. Useful for triode testing. This is usually set automatically by the selected tube type.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="layoutDirection">
-            <enum>Qt::LeftToRight</enum>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">margin-left:0%;
-margin-right:20%;</string>
-           </property>
-           <property name="text">
-            <string>Va/g2=Va1</string>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="6">
-          <widget class="QLineEdit" name="EmmIa">
-           <property name="maximumSize">
-            <size>
-             <width>200</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QLineEdit {
-	background-color: rgb(240, 240, 0);
-	border: 1px solid gray;
-}
-
-QLineEdit:hover {
-	background-color: rgb(240, 240, 0);
-	border: 1px solid gray;
-}
-</string>
-           </property>
-           <property name="text">
-            <string>10</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="4" colspan="2">
-          <widget class="QLabel" name="label_3">
-           <property name="styleSheet">
-            <string notr="true">background-color: rgb(200, 200, 0);</string>
-           </property>
-           <property name="text">
-            <string>Min Ia mA</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="5" column="4" colspan="2">
-          <widget class="QCheckBox" name="checkQuickTest">
-           <property name="maximumSize">
-            <size>
-             <width>115</width>
-             <height>19</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable quick test&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="layoutDirection">
-            <enum>Qt::LeftToRight</enum>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">margin-left:0%;
-margin-right:20%;</string>
-           </property>
-           <property name="text">
-            <string>Quick Test</string>
            </property>
           </widget>
          </item>
@@ -1388,9 +1695,13 @@ margin-right:20%;</string>
         <zorder>EmmVs</zorder>
         <zorder>EmmVg</zorder>
         <zorder>checkVsEqVa</zorder>
-        <zorder>label_3</zorder>
-        <zorder>EmmIa</zorder>
         <zorder>checkQuickTest</zorder>
+        <zorder>gm1Typ</zorder>
+        <zorder>gm_label</zorder>
+        <zorder>label_17</zorder>
+        <zorder>gm1Delta</zorder>
+        <zorder>gm2Typ</zorder>
+        <zorder>gm2Delta</zorder>
        </widget>
       </widget>
       <widget class="QGroupBox" name="Readings">
@@ -2456,9 +2767,9 @@ background-color:rgb(0, 0, 0);
        <property name="geometry">
         <rect>
          <x>190</x>
-         <y>320</y>
+         <y>330</y>
          <width>421</width>
-         <height>51</height>
+         <height>41</height>
         </rect>
        </property>
        <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,0,0,0,0,0,0">
@@ -2473,7 +2784,7 @@ background-color:rgb(0, 0, 0);
           <property name="maximumSize">
            <size>
             <width>200</width>
-            <height>25</height>
+            <height>200</height>
            </size>
           </property>
           <property name="toolTip">
@@ -2501,7 +2812,7 @@ background-color:rgb(0, 0, 0);
           <property name="maximumSize">
            <size>
             <width>200</width>
-            <height>25</height>
+            <height>200</height>
            </size>
           </property>
           <property name="toolTip">
@@ -2526,7 +2837,7 @@ background-color:rgb(0, 0, 0);
           <property name="maximumSize">
            <size>
             <width>200</width>
-            <height>15</height>
+            <height>10</height>
            </size>
           </property>
           <property name="text">
@@ -2648,7 +2959,7 @@ border-color: #800000;
           <property name="maximumSize">
            <size>
             <width>200</width>
-            <height>15</height>
+            <height>10</height>
            </size>
           </property>
           <property name="text">
@@ -2685,7 +2996,7 @@ border-color: #800000;
      <x>0</x>
      <y>0</y>
      <width>651</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuUtgui">

@@ -168,7 +168,7 @@ void PlotTabWidget::plotUpdate(plotInfo_t *plotinfo) {
     int first = 0, last = activeStore->length() > (VaSteps+1)*(VgSteps+1) ? (VaSteps+1)*(VgSteps+1) :activeStore->length();
     bool plotTri = true;
 
-    if (plotinfo->type==NONE) {
+    if (plotinfo->type==NONE && !plotinfo->VsEQVa) {
         plotTri = false;
         last = activeStore->length();
     } else if ( (plotinfo->type==KOREN_P || plotinfo->type==DERK_P  || plotinfo->type==DERK_B || plotinfo->type==DERKE_P || plotinfo->type==DERKE_B)  && !checkPlotTriode->isChecked())
@@ -257,7 +257,7 @@ void PlotTabWidget::plotUpdate(plotInfo_t *plotinfo) {
                     Vg = floor(0.5+10*Vg)/10;
                     Vs = floor(0.5+10*Vs)/10;
                     //TODO: check - used to use Iaparams.penfun
-                    if ( plotinfo->type==DIODE || plotinfo->type==TRIODE || plotinfo->type==DUAL_TRIODE || plotTri) QTextStream(&grlabel)  << "Vg1:" << Vg;
+                    if ( plotinfo->type==DIODE || plotinfo->type==TRIODE || plotinfo->type==DUAL_TRIODE || plotTri ) QTextStream(&grlabel)  << "Vg1:" << Vg;
                     else QTextStream(&grlabel)  << "Vg1:" << Vg << " Vg2:" << Vs;
                     plotArea->graph(gr++)->setName(grlabel);
                     if (y2cb->currentText()!="Off") {

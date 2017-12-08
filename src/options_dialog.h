@@ -29,6 +29,10 @@ private slots:
 
     void on_VgScaleText_editingFinished();
 
+    void on_VaScaleText_editingFinished();
+
+    void on_VaScaleText_returnPressed();
+
 private:
     Ui::options_dialog *ui;
     MainWindow * mw;

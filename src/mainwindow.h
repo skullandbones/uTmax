@@ -112,6 +112,7 @@ public:
         int AvgNum;
         bool AbortOnLimit;
         float VgScale;
+        float VaScale;
     };
     options_t options;
 
@@ -271,7 +272,10 @@ private:
         float EmmVa;
         float EmmVs;
         float EmmVg;
-        float EmmIa;
+        float gm1Typ;
+        float gm1Del;
+        float gm2Typ;
+        float gm2Del;
     };
     tubeData_t tubeData;
     QList<tubeData_t> *tubeDataList;

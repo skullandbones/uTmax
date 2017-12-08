@@ -41,6 +41,7 @@
 
 #define VMIN 2
 #define COMDEBUG (false)
+#define LOGGING (false)
 #define VGLIM 3 //difference from max
 #define Vdi 0.5  //drop across diode D11
 #define Vdar 0.75  //drop across darlington
@@ -52,9 +53,10 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
-    if (COMDEBUG) {
+    if (COMDEBUG || LOGGING) {
         logFile.setFileName("log.txt");
         logFile.open(QIODevice::WriteOnly | QIODevice::Text);
+        QTextStream(&logFile) << "Log Started\n";
     }
 
     activeStore=0;
@@ -89,6 +91,7 @@ MainWindow::MainWindow(QWidget *parent) :
     options.Ilimit=0;
     options.AbortOnLimit=true;
     options.VgScale=1.0;
+    options.VaScale=1.0;
     portInUse = NULL;
     penList = new QList<QPen>;
     status=Idle;
@@ -122,6 +125,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->AutoPath->setText(QDir::homePath());
     QPixmap logo = QPixmap(":/uTracer.png");
     ui->Logo->setPixmap(logo);
+    this->setWindowTitle("utMax 1.3a");
 
     ClearLCDs();
 
@@ -575,7 +579,7 @@ void MainWindow::RxData()
                 VsNow = sweepList->at(curve).Vs;
                 VgNow = sweepList->at(curve).Vg;
                 if (VaNow>425 || VsNow>425) {
-                    ui->statusBar->showMessage("Internal Error: Vaor Vs excessive");
+                    ui->statusBar->showMessage("Internal Error: Va or Vs excessive");
                     stop = false;
                     status=HeatOff;
                     float v = VaNow > VsNow ? VaNow : VsNow;
@@ -683,10 +687,14 @@ void MainWindow::RxData()
             if (RxCode==RXSUCCESS) {
                 //check current limit
                 saveADCInfo(&response);
+                if (LOGGING) QTextStream(&logFile) << "Sweep_adc @"<< curve <<"\n";
+
                 StoreData(true); //Add to data store
                 if (response.mid(0,2)=="11") {
-                    ui->statusBar->showMessage("WARNING: Current Limit Hit");
-                    qDebug() << "Sweep_adc: Current Limit Hit";
+                    if (LOGGING) QTextStream(&logFile) << "+Current limit\n";
+                    QMessageBox::warning(NULL,"Alert!","Current Limit Hit");
+                    ui->statusBar->showMessage("Current Limit");
+
                     if (options.AbortOnLimit==true) {
                         qDebug() << "Sweep_adc: Current Limit Abort";
                         status=HeatOff;
@@ -703,17 +711,23 @@ void MainWindow::RxData()
                 }
                 curve++;
                 bool done=false;
-                if ( (power > tubeData.powerLim) && !ui->checkQuickTest->isChecked()) {
+//                if ( (power > tubeData.powerLim) && !ui->checkQuickTest->isChecked() ) {
+                if ( (power > tubeData.powerLim) && !ui->checkQuickTest->isChecked() && (curve < sweepList->length()) ) {
+                if (LOGGING) QTextStream(&logFile) << "+power limit\n";
+
                     while (!done) {
-                        if (sweepList->at(curve).Va >= VaNow) {
+                        if (sweepList->at(curve).Va > VaNow) {
                             results.Ia=-1; // mark as ignore
                             dataStore->append(results);
                             curve++; //skip high power points
                             if (curve == sweepList->length()) {
                                 done =true;
                                 if ( (dataStore->length()>5) && ui->TubeType->currentText()!=NONE) {
+                                        if (LOGGING) QTextStream(&logFile) << "+call optimizer\n";
                                         optimizer->Optimize(dataStore, ui->TubeType->currentIndex(), 1, VaSteps, VsSteps, VgSteps);
+                                        if (LOGGING) QTextStream(&logFile) << "+update LCDS\n";
                                         updateLcdsWithModel();
+                                        if (LOGGING) QTextStream(&logFile) << "+replot\n";
                                         RePlot(dataStore);
                                 }
                             }
@@ -723,6 +737,7 @@ void MainWindow::RxData()
                     }
                 }
                 if (curve < sweepList->length()) {
+                    if (LOGGING) QTextStream(&logFile) << "+progress\n";
                     int progress=(100*curve)/sweepList->length();
                     ui->CaptureProg->setValue(progress);
                     QString msg = QString("Sweep %1 % done").arg(progress);
@@ -738,6 +753,7 @@ void MainWindow::RxData()
                 {
                     if (startSweep>0) //skip re-heating
                     {
+                        if (LOGGING) QTextStream(&logFile) << "+sweep complete warm start\n";
                         status = heat_done;
                         ui->statusBar->showMessage("Sweep complete");
                         ui->CaptureProg->setValue(100);
@@ -745,6 +761,7 @@ void MainWindow::RxData()
                     else
                     {
                         status=HeatOff;
+                        if (LOGGING) QTextStream(&logFile) << "+sweep complete heat off\n";
                         float v = VaNow > VsNow ? VaNow : VsNow;
                         distime =(int)(DISTIME * v/400);
                         HV_Discharge_Timer =distime;
@@ -880,6 +897,7 @@ void MainWindow::RePlot(QList<results_t> * dataSet) {
        plot1.VgEnd = VgEnd;
        plot1.tube =  ui->TubeSelector->currentText();
        plot1.type = ui->TubeType->currentText();
+       plot1.VsEQVa = ui->checkVsEqVa->isChecked();
        plotTabs.at(i)->plotUpdate(&plot1);
     }
     if ( plot1.penChange ) SaveCalFile();
@@ -914,6 +932,7 @@ void MainWindow::AddPlotLabels() {
 }
 */
 
+
 //---------------------------------------------------
 // Manage results data pool
 void MainWindow::StoreData(bool add)
@@ -943,7 +962,10 @@ void MainWindow::StoreData(bool add)
         results.IsMod=0;
 //        results.IaMod=results.Ia;
 //        results.IsMod=results.Is;
+        power = adc_real.Ia * adc_real.Va/1000;
+        if ( power > tubeData.powerLim ) results.Ia=-1; //ignore this point
         dataStore->append(results);
+        if (LOGGING) QTextStream(&logFile) << "StoreData len"<< dataStore->length()<<"\n";
         ClearLCDs();
         ui->LCD1_label->setText("Va(a)");
         ui->LCD2_label->setText("Va(b)/g2");
@@ -965,7 +987,6 @@ void MainWindow::StoreData(bool add)
         else if (adc_real.Is<350) ui->lcd5->setPalette(Qt::yellow);
         else ui->lcd5->setPalette(Qt::red);
 
-        power = adc_real.Ia * adc_real.Va/1000;
         ui->lcd6->display(round( power*10)/10);
         if ( power > tubeData.powerLim ) ui->lcd6->setPalette((Qt::red));
             else ui->lcd6->setPalette(Qt::green);
@@ -983,7 +1004,7 @@ void MainWindow::StoreData(bool add)
                 Ia_avg/=6;
                 Is_avg/=6;
                 //mu, gm, Ia
-                if (ui->TubeType->currentText()=="Koren Diode") {
+                if (ui->TubeType->currentText()==DIODE || ui->TubeType->currentText()==DUAL_DIODE) {
                     ui->LCD1_label->setText("Ra(a)K");
                     ui->LCD2_label->setText("Ra(b)K");
                     ui->LCD3_label->setText("Ia");
@@ -991,22 +1012,17 @@ void MainWindow::StoreData(bool add)
                     Ra =round(Ra*10)/10;
                     ui->lcd1->display( Ra );
                     float Rb = (dataStore->at(3).Vs-dataStore->at(2).Vs)/(dataStore->at(3).Is-dataStore->at(2).Is);
-                    round(Rb*10)/10;
+                    Rb=round(Rb*10)/10;
                     ui->lcd2->display(Rb);
                     ui->lcd3->display(Ia_avg);
                     //Emmission
-                    ui->LCD8_label->setText("Ia(Emm)");
+                    ui->LCD8_label->setText("Bias");
                     ui->lcd8->display( dataStore->at(6).Ia );
-                    if ( dataStore->at(6).Ia < ui->EmmIa->text().toFloat() )
-                        ui->lcd8->setPalette(Qt::red);
-                    else
-                        ui->lcd8->setPalette(Qt::green);
-
                     QTextStream(&QuickRes)  << "Ia(a)=" << Ia_avg
                                             << " Ia(b)=" << Is_avg
                                             << " Ra(a)=" << Ra
                                             << " Ra(b)=" << Rb
-                                            << " IaEmm=" << dataStore->at(6).Ia;
+                                            << " Bias=" << dataStore->at(6).Ia;
                 }
                 else if (ui->TubeType->currentText()=="Koren Triode") {
                     ui->LCD1_label->setText("RaK");
@@ -1017,71 +1033,85 @@ void MainWindow::StoreData(bool add)
                     float Gm = (dataStore->at(5).Ia-dataStore->at(4).Ia)/(dataStore->at(5).Vg-dataStore->at(4).Vg);
                     ui->lcd1->display( round(Ra*10)/10 );
                     ui->lcd2->display( Gm );
+                    float GmMin = ui->gm1Typ->text().toFloat() * (1- ui->gm1Delta->text().toFloat()/100);
+                    float GmMax = ui->gm1Typ->text().toFloat() * (1+ ui->gm1Delta->text().toFloat()/100);
+                    if ( Gm < GmMin || Gm>GmMax )
+                                            ui->lcd2->setPalette(Qt::red);
+                                        else
+                                            ui->lcd2->setPalette(Qt::green);
+
                     ui->lcd3->display( round(Ra*Gm*10)/10);
                     ui->lcd4->display(Ia_avg);
 
                     //Emmission
-                    ui->LCD9_label->setText("Ia(Emm)");
+                    ui->LCD9_label->setText("Bias");
                     ui->lcd9->display( dataStore->at(6).Ia );
-                    if ( dataStore->at(6).Ia < ui->EmmIa->text().toFloat() )
-                        ui->lcd9->setPalette(Qt::red);
-                    else
-                        ui->lcd9->setPalette(Qt::green);
 
                     QTextStream(&QuickRes) << "RaK=" << Ra
                                            << " Gm=" << Gm*10
                                            << " Mu=" << Ra*Gm
                                            << " Ia(a)=" << Ia_avg
-                                           << " IaEmm=" << dataStore->at(6).Ia;
+                                           << " Bias=" << dataStore->at(6).Ia;
                 }
                 else if (ui->TubeType->currentText()=="Koren Dual Triode") {
                     ui->LCD1_label->setText("Ra K(a)");
-                    ui->LCD2_label->setText(" Gm mS(a)");
-                    ui->LCD3_label->setText(" Mu(a)");
-                    ui->LCD4_label->setText(" Ia(a)");
-                    ui->LCD5_label->setText(" Ra K(b)");
-                    ui->LCD6_label->setText(" Gm mS(b)");
-                    ui->LCD7_label->setText(" Mu(b)");
-                    ui->LCD8_label->setText(" Ia(b)");
+                    ui->LCD2_label->setText("Gm mS(a)");
+                    ui->LCD3_label->setText("Mu(a)");
+                    ui->LCD4_label->setText("Bias(a)");
+                    ui->LCD5_label->setText("Ra K(b)");
+                    ui->LCD6_label->setText("Gm mS(b)");
+                    ui->LCD7_label->setText("Mu(b)");
+                    ui->LCD8_label->setText("Bias(b)");
                     float Ra = (dataStore->at(1).Va-dataStore->at(0).Va)/(dataStore->at(1).Ia-dataStore->at(0).Ia);
                     float Gm = (dataStore->at(5).Ia-dataStore->at(4).Ia)/(dataStore->at(5).Vg-dataStore->at(4).Vg);
                     ui->lcd1->display( Ra );
                     ui->lcd2->display( Gm );
+                    float GmMin = ui->gm1Typ->text().toFloat() * (1- ui->gm1Delta->text().toFloat()/100);
+                    float GmMax = ui->gm1Typ->text().toFloat() * (1+ ui->gm1Delta->text().toFloat()/100);
+                    if ( Gm < GmMin || Gm > GmMax )
+                        ui->lcd2->setPalette(Qt::red);
+                    else
+                        ui->lcd2->setPalette(Qt::green);
+
                     ui->lcd3->display( Ra*Gm);
                     float Rb = (dataStore->at(3).Vs-dataStore->at(2).Vs)/(dataStore->at(3).Is-dataStore->at(2).Is);
                     float Gmb = (dataStore->at(5).Is-dataStore->at(4).Is)/(dataStore->at(5).Vg-dataStore->at(4).Vg);
-                    ui->lcd4->display(Ia_avg);
+                    ui->lcd4->display(dataStore->at(6).Ia);
                     ui->lcd5->display( Rb );
                     ui->lcd6->display( Gmb);
-                    ui->lcd7->display(Rb*Gmb);
-                    ui->lcd8->display(Is_avg);
-                    //Emmission
-                    ui->LCD9_label->setText("Ia(Emm)");
-                    ui->lcd9->display( dataStore->at(6).Ia );
-                    if ( min(dataStore->at(6).Ia, dataStore->at(6).Is) < ui->EmmIa->text().toFloat() )
-                        ui->lcd9->setPalette(Qt::red);
+                    GmMin = ui->gm2Typ->text().toFloat() * (1- ui->gm2Delta->text().toFloat()/100);
+                    GmMax = ui->gm2Typ->text().toFloat() * (1+ ui->gm2Delta->text().toFloat()/100);
+                    if ( Gmb < GmMin || Gmb > GmMax )
+                        ui->lcd6->setPalette(Qt::red);
                     else
-                        ui->lcd9->setPalette(Qt::green);
+                        ui->lcd6->setPalette(Qt::green);
+
+                    ui->lcd7->display(Rb*Gmb);
+                    ui->lcd8->display(dataStore->at(6).Is);
+                    //Emmission
+                    ui->LCD9_label->setText("");
 
                     QTextStream(&QuickRes)
                         << "Ra(a)K" << "\t"
                         << "gm(a)" <<  "\t"
                         << "Mu(a)" <<  "\t"
                         << "Ia(a)" <<  "\t"
+                        << "Bias(a)" << "\t"
                         << "Ra(b)K" <<  "\t"
                         << "Gm(b)" <<  "\t"
                         << "Mu(b)" <<  "\t"
-                        << " Ia(b)" <<  "\t"
-                        << " IaEmm=" << "\n"
-                        << Ra  << "\t"
-                        << Gm  << "\t"
-                        << Ra*Gm  << "\t"
-                        << Ia_avg  << "\t"
-                        << Rb << "\t"
-                        << Gmb << "\t"
-                        << Rb*Gmb << "\t"
-                        << Is_avg << "\t"
-                        << min(dataStore->at(6).Ia,dataStore->at(6).Is);
+                        << "Ia(b)" <<  "\t"
+                        << "Bias(b)" << "\n"
+                        << round(Ra)  << "\t"
+                        << round(Gm*10)/10  << "\t"
+                        << round(Ra*Gm*10)/10  << "\t"
+                        << round(10*Ia_avg)/10  << "\t"
+                        << round(10*dataStore->at(6).Ia)/10 << "\t"
+                        << round(Rb) << "\t"
+                        << round(10*Gmb)/10 << "\t"
+                        << round(10*Rb*Gmb)/10 << "\t"
+                        << round(10*Is_avg)/10 << "\t"
+                        << round(10*dataStore->at(6).Is)/10;
                 }
                 else if (ui->TubeType->currentText()!=NONE || ui->checkQuickTest->isChecked() ) {
                     //pentodes                    
@@ -1092,10 +1122,22 @@ void MainWindow::StoreData(bool add)
                     ui->LCD2_label->setText("Ia/Vg2 mS");
                     float Gm2 = (dataStore->at(3).Ia-dataStore->at(2).Ia)/(dataStore->at(3).Vs-dataStore->at(2).Vs);
                     ui->lcd2->display( Gm2 );
+                    float GmMin = ui->gm2Typ->text().toFloat() * (1- ui->gm2Delta->text().toFloat()/100);
+                    float GmMax = ui->gm2Typ->text().toFloat() * (1+ ui->gm2Delta->text().toFloat()/100);
+                    if ( Gm2 < GmMin || Gm2 > GmMax )
+                        ui->lcd2->setPalette(Qt::red);
+                    else
+                        ui->lcd2->setPalette(Qt::green);
 
                     ui->LCD3_label->setText("Gm mS");
                     float Gm1 = (dataStore->at(5).Ia-dataStore->at(4).Ia)/(dataStore->at(5).Vg-dataStore->at(4).Vg);
                     ui->lcd3->display( Gm1 );
+                    GmMin = ui->gm1Typ->text().toFloat() * (1- ui->gm1Delta->text().toFloat()/100);
+                    GmMax = ui->gm1Typ->text().toFloat() * (1+ ui->gm1Delta->text().toFloat()/100);
+                    if ( Gm1 < GmMin || Gm1 > GmMax )
+                        ui->lcd3->setPalette(Qt::red);
+                    else
+                        ui->lcd3->setPalette(Qt::green);
 
                     ui->LCD4_label->setText("Mu");
                     ui->lcd4->display( Ra*Gm1);
@@ -1107,39 +1149,43 @@ void MainWindow::StoreData(bool add)
                     ui->lcd6->display(Is_avg);
 
                     //Emmission
-                    ui->LCD9_label->setText("Ia(Emm)");
+                    ui->LCD8_label->setText("Ia @ Bias");
+                    ui->lcd8->display( dataStore->at(6).Is );
+                    ui->LCD9_label->setText("Ig2 @ Bias");
                     ui->lcd9->display( dataStore->at(6).Ia );
-                    if ( dataStore->at(6).Ia < ui->EmmIa->text().toFloat() )
-                        ui->lcd9->setPalette(Qt::red);
-                    else
-                        ui->lcd9->setPalette(Qt::green);
 
 
                     QTextStream(&QuickRes)
-                            << "Ra(a)K" << "\t"
-                            << " gmG2" << "\t"
-                            << " gmG1" << "\t"
+                            << "RaK" << "\t"
+                            << " gm2" << "\t"
+                            << " gm1" << "\t"
                             << " Mu" << "\t"
                             << " Ia" << "\t"
                             << " Ig2" << "\t"
-                            << " Ia Emmision" << "\n"
-                            << Ra << "\t"
-                            << Gm2 << "\t"
-                            << Gm1 << "\t"
-                            << Ra*Gm1 << "\t"
-                            << Ia_avg << "\t"
-                            << Is_avg << "\t"
-                            << dataStore->at(6).Ia;
+                            << " Bias" << "\n"
+                            << round(Ra) << "\t"
+                            << round(10*Gm2)/10 << "\t"
+                            << round(10*Gm1)/10 << "\t"
+                            << round(10*Ra*Gm1)/10 << "\t"
+                            << round(10*Ia_avg)/10 << "\t"
+                            << round(10*Is_avg)/10 << "\t"
+                            << round(10*dataStore->at(6).Ia)/10;
 
                 }
             }
         }
         else if ( (dataStore->length()>5) && (dataStore->length()== sweepList->length()
                                               && ui->TubeType->currentText()!=NONE)) {
+            if (LOGGING) QTextStream(&logFile) << "+optimise\n";
                 optimizer->Optimize(dataStore, ui->TubeType->currentIndex(), 1, VaSteps, VsSteps, VgSteps);
                 updateLcdsWithModel();
         }
-        if (!ui->checkQuickTest->isChecked()) RePlot(dataStore);
+        if (!ui->checkQuickTest->isChecked()) {
+            if (LOGGING) QTextStream(&logFile) << "+replot\n";
+            RePlot(dataStore);
+
+        }
+    if (LOGGING) QTextStream(&logFile) << "+end StoreData\n";
     }
 }
 
@@ -1183,15 +1229,18 @@ void MainWindow::updateLcdsWithModel() {
     float Vcg = ui->Vcg->text().toFloat();
 
     ClearLCDs();
+    if (LOGGING) QTextStream(&logFile) << "updateLCDsWithModel\n";
 
     // TDB : calculate correct values
     if (ui->TubeType->currentText()==DIODE) {
+        if (LOGGING) QTextStream(&logFile) << "+diode\n";
         ui->LCD1_label->setText("Ra(a) K");
 
         Ra = optimizer->RaCalc(Vca, Vcs, Vcg);
         ui->lcd1->display(round(Ra*10)/10 );
     }
     else if (ui->TubeType->currentText()==DUAL_DIODE) {
+        if (LOGGING) QTextStream(&logFile) << "+dual diode\n";
         ui->LCD1_label->setText("Ra(a) K");
         ui->LCD2_label->setText("Ra(b) K");
         Ra = optimizer->RaCalc(Vca, Vcs, Vcg);
@@ -1200,17 +1249,21 @@ void MainWindow::updateLcdsWithModel() {
         ui->lcd2->display(round(Ra*10)/10 );
     }
     else if (ui->TubeType->currentText()==TRIODE) {
+        if (LOGGING) QTextStream(&logFile) << "+triode\n";
         ui->LCD1_label->setText("Ra K");
         ui->LCD2_label->setText("Gm mS");
         ui->LCD3_label->setText("Mu");
 
         Ra = optimizer->RaCalc(Vca, Vcs, Vcg);
+        if (LOGGING) QTextStream(&logFile) << "+opt RA triode\n";
         Gm = optimizer->GmCalc(Vca, Vcs, Vcg);
+        if (LOGGING) QTextStream(&logFile) << "+opt GM triode\n";
         ui->lcd1->display( round(Ra*10)/10 );
         ui->lcd2->display( round(Gm*10)/10 );
         ui->lcd3->display( round(Ra*Gm*10)/10);
     }
     else if (ui->TubeType->currentText()==DUAL_TRIODE) {
+        if (LOGGING) QTextStream(&logFile) << "+dual triode\n";
         ui->LCD1_label->setText("Ra(a) K");
         ui->LCD2_label->setText("Gm(a) mS(a)");
         ui->LCD3_label->setText("Mu(a)");
@@ -1231,6 +1284,7 @@ void MainWindow::updateLcdsWithModel() {
         ui->lcd6->display( round(Ra*Gm*10)/10);
     }
     else if (ui->TubeType->currentText()!=NONE) {
+        if (LOGGING) QTextStream(&logFile) << "+pentode\n";
         //pentodes
         ui->LCD1_label->setText("Ra K");
         ui->LCD2_label->setText("Gm mS");
@@ -1250,7 +1304,7 @@ void MainWindow::saveADCInfo(QByteArray * adc_pkt)
     adc_data.Ia_raw = adc_pkt->mid(6,4).toInt(&ok,16);
     adc_data.Is = adc_pkt->mid(10,4).toInt(&ok,16);
     adc_data.Is_raw = adc_pkt->mid(14,4).toInt(&ok,16);
-    adc_data.Va = adc_pkt->mid(18,4).toInt(&ok,16);
+    adc_data.Va = adc_pkt->mid(18,4).toInt(&ok,16)/options.VaScale;
     adc_data.Vs = adc_pkt->mid(22,4).toInt(&ok,16);
     adc_data.Vsu = adc_pkt->mid(26,4).toInt(&ok,16);
     adc_data.Vn = adc_pkt->mid(30,4).toInt(&ok,16);
@@ -1303,6 +1357,8 @@ void MainWindow::GetReal()
     adc_real.Vn = 5.0*(adc_scale.Vn *(adc_data.Vn/1023.0-1.0)+1.0) * calData.VnVal;
     adc_real.Va = (float) adc_data.Va*5.0/1023.0 * adc_scale.Va * calData.VaVal -adc_real.Vsu + Vdi - Vdar + adc_real.Ia*Iares/1000.0;
     adc_real.Vs = (float) adc_data.Vs*5.0/1023.0 * adc_scale.Vs * calData.VsVal -adc_real.Vsu + Vdi - Vdar + adc_real.Is*Isres/1000.0;
+    if (adc_real.Ia<0) adc_real.Ia=0;
+    if (adc_real.Is<0) adc_real.Is=0;
     if (adc_real.Va < 1) {
         adc_real.Va =0;
         adc_real.Ia =0;
@@ -1379,7 +1435,7 @@ void MainWindow::ReadCalibration()
         calFile << "IsMax=200\n";
         calFile << "VgMax=50\n";
         calFile << ";Define pen number,color RGB, and width\n";
-        int r,g,b,w,h,s,v;
+        int r,g,b,h,s,v;
         for(int i=0; i<16; i++) {
             h = (360*(i % 16))/16;
             s = 200;
@@ -1558,7 +1614,10 @@ void MainWindow::ReadDataFile()
             tubeData.EmmVa=200;
             tubeData.EmmVs=200;
             tubeData.EmmVg=0;
-            tubeData.EmmIa=10;
+            tubeData.gm1Typ=5;
+            tubeData.gm1Del=30;
+            tubeData.gm2Typ=5;
+            tubeData.gm2Del=30;
 
             // add to library
             tubeDataList->append(tubeData);
@@ -1600,14 +1659,25 @@ void MainWindow::ReadDataFile()
             tubeData.EmmVa=200;
             tubeData.EmmVs=200;
             tubeData.EmmVg=0;
-            tubeData.EmmIa=10;
+            tubeData.gm1Typ=5;
+            tubeData.gm1Del=30;
+            tubeData.gm2Typ=5;
+            tubeData.gm2Del=30;
 
             if (dataline.length()>=27)  tubeData.powerLim=dataline.at(i++).toFloat(&ok);
             if (dataline.length()==31) {
                 tubeData.EmmVa=dataline.at(i++).toFloat(&ok);
                 tubeData.EmmVs=dataline.at(i++).toFloat(&ok);
                 tubeData.EmmVg=dataline.at(i++).toFloat(&ok);
-                tubeData.EmmIa=dataline.at(i++).toFloat(&ok);
+            }
+            if (dataline.length()==34) {
+                tubeData.EmmVa=dataline.at(i++).toFloat(&ok);
+                tubeData.EmmVs=dataline.at(i++).toFloat(&ok);
+                tubeData.EmmVg=dataline.at(i++).toFloat(&ok);
+                tubeData.gm1Typ=dataline.at(i++).toFloat(&ok);
+                tubeData.gm1Del=dataline.at(i++).toFloat(&ok);
+                tubeData.gm2Typ=dataline.at(i++).toFloat(&ok);
+                tubeData.gm2Del=dataline.at(i++).toFloat(&ok);
             }
             // add to library
             tubeDataList->append(tubeData);
@@ -1657,7 +1727,10 @@ void MainWindow::LabelPins(tubeData_t tubeData) {
     ui->EmmVa->setText(QString::number(tubeData.EmmVa ));
     ui->EmmVs->setText(QString::number(tubeData.EmmVs ));
     ui->EmmVg->setText(QString::number(tubeData.EmmVg ));
-    ui->EmmIa->setText(QString::number(tubeData.EmmIa ));
+    ui->gm1Typ->setText(QString::number(tubeData.gm1Typ ));
+    ui->gm1Delta->setText(QString::number(tubeData.gm1Del ));
+    ui->gm2Typ->setText(QString::number(tubeData.gm2Typ ));
+    ui->gm2Delta->setText(QString::number(tubeData.gm2Del ));
 }
 
 void MainWindow::on_TubeSelector_currentIndexChanged(const QString &arg1) {
@@ -1720,7 +1793,10 @@ void MainWindow::DataSaveDialog_clicked(const QString &Type) {
     tubeData.EmmVa = ui->EmmVa->text().toFloat();
     tubeData.EmmVs = ui->EmmVs->text().toFloat();
     tubeData.EmmVg = ui->EmmVg->text().toFloat();
-    tubeData.EmmIa = ui->EmmIa->text().toFloat();
+    tubeData.gm1Typ = ui->gm1Typ ->text().toFloat();
+    tubeData.gm1Del = ui->gm1Delta->text().toFloat();
+    tubeData.gm2Typ = ui->gm2Typ->text().toFloat();
+    tubeData.gm2Del = ui->gm2Delta->text().toFloat();
 
     //decide what to do with the copied data
     //qDebug() << "Changing tube=" << Type;
@@ -1785,7 +1861,7 @@ bool MainWindow::SaveTubeDataFile() {
         QTextStream out(&datafile);
 
         out << "ID,A,G2,G1,G1b,Cathode,G3,Heater,Heater,Htr Volts,SPICE model,VaStart,VaEnd,VaStep,VsStart," <<
-               "VsEnd,VsStep,VgStart,VgEnd,VgStep,Vca,Dva,Vcg2,Dvg2,Vcg,Dvg,Power,EmmVa,EmmVs,EmmVg,EmmIa\n";
+               "VsEnd,VsStep,VgStart,VgEnd,VgStep,Vca,Dva,Vcg2,Dvg2,Vcg,Dvg,Power,EmmVa,EmmVs,EmmVg,gm1Typ,gm1Del,gm2Typ,gm1Del\n";
         for (int i=0; i< tubeDataList->length(); i++) {
             out << tubeDataList->at(i).ID << ","
                 << tubeDataList->at(i).Anode << ","
@@ -1817,7 +1893,10 @@ bool MainWindow::SaveTubeDataFile() {
                 << tubeDataList->at(i).EmmVa << ","
                 << tubeDataList->at(i).EmmVs << ","
                 << tubeDataList->at(i).EmmVg << ","
-                << tubeDataList->at(i).EmmIa << "\n";
+                << tubeDataList->at(i).gm1Typ << ","
+                << tubeDataList->at(i).gm1Del << ","
+                << tubeDataList->at(i).gm2Typ << ","
+                << tubeDataList->at(i).gm2Del << "\n";
         }
         datafile.close();
         return(true);
@@ -1827,11 +1906,21 @@ bool MainWindow::SaveTubeDataFile() {
 void MainWindow::on_TubeType_currentIndexChanged(int index)
 {
     tubeData.Model=ui->TubeType->currentText();
+    if (LOGGING) QTextStream(&logFile) << "+on_TubeType_currentIndexChanged\n";
     if (activeStore) {
+        if (LOGGING) QTextStream(&logFile) << "+call optimizer\n";
         optimizer->Optimize(activeStore, ui->TubeType->currentIndex(), 1, VaSteps, VsSteps, VgSteps);
+        if (LOGGING) QTextStream(&logFile) << "+updateLCDS\n";
         updateLcdsWithModel();
+        if (LOGGING) QTextStream(&logFile) << "+RePlot\n";
         RePlot(activeStore);
+        if (LOGGING) QTextStream(&logFile) << "+after Replot\n";
     }
+    ClearLCDs();
+    if (ui->TubeType->currentText()==DIODE || ui->TubeType->currentText()==DUAL_DIODE) {
+        ui->gm_label->setText("Ra ohms");
+    } else ui->gm_label->setText("Gm mS");
+
     if (ui->TubeType->currentText()==DUAL_TRIODE || ui->TubeType->currentText()==DUAL_DIODE) {
         ui->AnodeLabel->setText("A(a)");
         ui->Grid2Label->setText("A(b)");
@@ -1847,10 +1936,7 @@ void MainWindow::on_TubeType_currentIndexChanged(int index)
         ui->Grid3Label ->setText("G3");
         ui->CathodeLabel->setText("C");
     }
-    updateTubeGreying();
-}
 
-void MainWindow::updateTubeGreying() {
     if (!ui->checkQuickTest->isChecked()) {
         //if triode or Diode then Vs=Va
         if (ui->TubeType->currentText()==TRIODE || ui->TubeType->currentText()==DUAL_TRIODE) {
@@ -1876,6 +1962,26 @@ void MainWindow::updateTubeGreying() {
     }
 }
 
+void MainWindow::updateTubeGreying() {
+    if (!ui->checkQuickTest->isChecked()) {
+        //if triode or Diode then Vs=Va
+        if (ui->TubeType->currentText()==TRIODE || ui->TubeType->currentText()==DUAL_TRIODE) {
+            ui->checkVsEqVa->setChecked(true);
+            ui->VsStart->setDisabled(true);
+            ui->VsEnd->setDisabled(true);
+            ui->VsSteps->setDisabled(true);
+        } else if ( (ui->TubeType->currentText()==DIODE) || (ui->TubeType->currentText()==DUAL_DIODE)) {
+            ui->VgSteps->setText("0");
+            ui->VgSteps->setDisabled(true);
+            ui->VgStart->setDisabled(true);
+            ui->VgEnd->setDisabled(true);
+            ui->VsSteps->setDisabled(true);
+            ui->VsStart->setDisabled(true);
+            ui->VsEnd->setDisabled(true);
+        }
+    }
+}
+
 void MainWindow::updateSweepGreying()
 {
     //Handle state of checkQuicktest
@@ -1890,7 +1996,10 @@ void MainWindow::updateSweepGreying()
         ui->EmmVa->setEnabled(true);
         ui->EmmVs->setEnabled(true);
         ui->EmmVg->setEnabled(true);
-        ui->EmmIa->setEnabled(true);
+        ui->gm1Typ->setEnabled(true);
+        ui->gm1Delta->setEnabled(true);
+        ui->gm2Typ->setEnabled(true);
+        ui->gm2Delta->setEnabled(true);
 
         //Disable sweep settings
         ui->VaStart->setEnabled(false);
@@ -1913,7 +2022,10 @@ void MainWindow::updateSweepGreying()
         ui->EmmVa->setEnabled(false);
         ui->EmmVs->setEnabled(false);
         ui->EmmVg->setEnabled(false);
-        ui->EmmIa->setEnabled(false);
+        ui->gm1Typ->setEnabled(false);
+        ui->gm1Delta->setEnabled(false);
+        ui->gm2Typ->setEnabled(false);
+        ui->gm2Delta->setEnabled(false);
 
         //Enable sweep settings
         ui->VaStart->setEnabled(true);
@@ -1922,10 +2034,13 @@ void MainWindow::updateSweepGreying()
         ui->VgEnd->setEnabled(true);
         ui->VaSteps->setEnabled(true);
         ui->VgSteps->setEnabled(true);
-        if (!ui->checkVsEqVa->isChecked()) {
-            ui->VsStart->setEnabled(true);
-            ui->VsEnd->setEnabled(true);
-            ui->VsSteps->setEnabled(true);
+        ui->VsStart->setEnabled(true);
+        ui->VsEnd->setEnabled(true);
+        ui->VsSteps->setEnabled(true);
+        if (ui->checkVsEqVa->isChecked()) {
+            ui->VsStart->setEnabled(false);
+            ui->VsEnd->setEnabled(false);
+            ui->VsSteps->setEnabled(false);
         }
         updateTubeGreying();
     }
@@ -1939,6 +2054,8 @@ void MainWindow::updateSweepGreying()
 // UI Slots
 void MainWindow::on_actionExit_triggered()
 {
+    if (LOGGING) QTextStream(&logFile) << "===Logging Ends===\n";
+    if (LOGGING) logFile.close();
     exit(0);
 }
 
@@ -2004,6 +2121,7 @@ void MainWindow::on_actionSave_Data_triggered()
 {
     static QString oldFileName;
     QString dataFileName;
+    if (LOGGING) QTextStream(&logFile) << "Writing Data\n";
 
     if (ui->checkAutoNumber->isChecked() ) {
         QString fn = ui->AutoFileName->text();
@@ -2018,7 +2136,8 @@ void MainWindow::on_actionSave_Data_triggered()
         dataFileName = QFileDialog::getSaveFileName(this,tr("Save Data file"),ui->AutoPath->text(),"Data log file(*.txt)");
     }
     if (dataFileName!="") {
-        //qDebug() << "Data file name:" << dataFileName;
+        if (LOGGING) QTextStream(&logFile) << dataFileName;
+        //qDebug() << "Data file name:" << dataFileName << '\n';
         int fs= dataFileName.lastIndexOf("/");
         fs= dataFileName.lastIndexOf(".");
         //Save the data
@@ -2054,8 +2173,10 @@ void MainWindow::on_actionSave_Data_triggered()
                 datafile.write(m);
             }
             datafile.write("Point\tCurve\tIa\tIs\tVg\tVa\tVs\tVf\n");
+            if (LOGGING) QTextStream(&logFile) << "Header Written\n";
 
             if (dataStore->length()>0) {
+                if (LOGGING) QTextStream(&logFile) << "Start of data section\n";
                 //data
                 results_t data_set;
                 int curve=1, point=1, c=0;
@@ -2070,6 +2191,7 @@ void MainWindow::on_actionSave_Data_triggered()
 
                     datafile.write(m);
                 }
+                if (LOGGING) QTextStream(&logFile) << "Data Written\n";
                 if (ui->checkQuickTest->isChecked()) {
 
                     QTextStream(&datafile) << QuickRes;
@@ -2257,7 +2379,7 @@ void MainWindow::CreateTestVectors()
         sweepList->append(test_vector);//Vg
 
         //Emmission
-        test_vector.Va = ui->EmmVa->text().toFloat()*(1 - ui->DeltaVa->text().toFloat()/200);
+        test_vector.Va = ui->EmmVa->text().toFloat();
         test_vector.Vs = ui->EmmVs->text().toFloat();
         test_vector.Vg = ui->EmmVg->text().toFloat();
         sweepList->append(test_vector); //Emmision Vector
@@ -2288,7 +2410,7 @@ void MainWindow::CreateTestVectors()
             //make vs==Va for a triode sweep
             if (ui->TubeType->currentText()!=NONE) { //skip if not modelling
             VgNow = ui->VgStart->text().toFloat();
-            if (tubeData.Model==DERK_P || tubeData.Model==DERK_B || tubeData.Model==DERKE_P || tubeData.Model==DERKE_B)
+            if (tubeData.Model==KOREN_P || tubeData.Model==DERK_P || tubeData.Model==DERK_B || tubeData.Model==DERKE_P || tubeData.Model==DERKE_B)
                 for (int g = 0; g <= VgSteps; g ++)
                 {
                     test_vector.Vg = VgNow;
@@ -2375,11 +2497,11 @@ void MainWindow::on_actionRead_Data_triggered()
         QTextStream in(&datafile);
         QString line = in.readLine();
         bool valid = (line == "Data 2");
-
-        int i = ui->TubeSelector->findText(in.readLine()); //name
+        line =in.readLine();
+        int i = ui->TubeSelector->findText(line); //name
         if (i !=-1 ) ui->TubeSelector->setCurrentIndex(i); else valid =false;
-
-        i= ui->TubeType->findText(in.readLine()); //set model
+        line =in.readLine();
+        i= ui->TubeType->findText(line); //set model
         if ( i!=-1 ) ui->TubeType->setCurrentIndex(i); else valid =false;
 
         if (valid) {
@@ -2447,7 +2569,9 @@ void MainWindow::on_actionRead_Data_triggered()
 
 void MainWindow::on_checkVsEqVa_clicked()
 {
-    if(ui->checkVsEqVa->isChecked()) {
+    updateSweepGreying();
+    /*
+     * if(ui->checkVsEqVa->isChecked()) {
         ui->VsStart->setDisabled(true);
         ui->VsEnd->setDisabled(true);
         ui->VsSteps->setDisabled(true);
@@ -2456,7 +2580,7 @@ void MainWindow::on_checkVsEqVa_clicked()
         ui->VsStart->setEnabled(true);
         ui->VsEnd->setEnabled(true);
         ui->VsSteps->setEnabled(true);
-    }
+    } */
 }
 
 void MainWindow::on_checkQuickTest_clicked()

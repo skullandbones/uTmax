@@ -48,6 +48,7 @@ struct plotInfo_t {
     QString type;
     QList<QPen> * penList;
     bool penChange;
+    bool VsEQVa;
 
 
 };

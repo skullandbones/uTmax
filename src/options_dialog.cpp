@@ -19,6 +19,7 @@ options_dialog::options_dialog(MainWindow *parent) :
     ui->AbortOnLimit->setChecked(mw->options.AbortOnLimit);
     ui->IsRangeSel->setCurrentIndex(mw->options.IsRange);
     ui->VgScaleText->setText(QString::number(mw->options.VgScale));
+    ui->VaScaleText->setText(QString::number(mw->options.VaScale));
     setIlimit();
 }
 void options_dialog::setIlimit() {
@@ -91,10 +92,24 @@ void options_dialog::on_VgScaleText_returnPressed()
     float a = ui->VgScaleText->text().toFloat(&ok);
     if (ok) mw->options.VgScale = a;
     else QMessageBox::information(NULL, "Entry Error", "Invalid entry for Vg Scale");
-
 }
 
 void options_dialog::on_VgScaleText_editingFinished()
 {
     on_VgScaleText_returnPressed();
+}
+
+
+void options_dialog::on_VaScaleText_returnPressed()
+{
+    bool ok;
+    float a = ui->VaScaleText->text().toFloat(&ok);
+    if (ok) mw->options.VaScale = a;
+    else QMessageBox::information(NULL, "Entry Error", "Invalid entry for Va Scale");
+}
+
+void options_dialog::on_VaScaleText_editingFinished()
+{
+    on_VaScaleText_returnPressed();
+
 }

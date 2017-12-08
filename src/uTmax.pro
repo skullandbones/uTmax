@@ -27,15 +27,18 @@ CONFIG(release, debug|release) {
 
 # macx unix win32
 !win32 {
-        # include(../3rdparty/qextserialport-1.2rc/src/qextserialport.pri)
+ 	include(../3rdparty/qextserialport-1.2rc/src/qextserialport.pri)
 	include(../3rdparty/gsl/gsl.pri)
 }
 win32 {
-#    INCLUDEPATH += ../3rdparty/gsl-1.8-lib/include
-#    LIBS += -L../3rdparty/gsl-1.8-bin/bin
-#    LIBS += -llibgsl
-#    LIBS += -llibgslcblas
+    INCLUDEPATH += ../3rdparty/gsl-1.8-lib/include
+    LIBS += -L../3rdparty/gsl-1.8-bin/bin
+    LIBS += -llibgsl
+    LIBS += -llibgslcblas
 }
+
+RESOURCES += utMax.qrc
+
 SOURCES += main.cpp\
         mainwindow.cpp \
     cal_dialog.cpp \
@@ -60,12 +63,16 @@ FORMS    +=  cal_dialog.ui \
     debug_dialog.ui \
     options_dialog.ui \
     datasavedialog.ui
-unix {    
-        FORMS    += mainwindow.ui
-}
-win32 | macx { 
-        FORMS    += mainwindow_win.ui
-}
 
-RESOURCES += \
-    utMax.qrc
+#unix {
+#        FORMS    += mainwindow_l.ui
+#}
+#macx {
+#        FORMS    += mainwindow_osx.ui
+#}
+#win32 {
+        FORMS    += mainwindow.ui
+#}
+
+DISTFILES += \
+    Style.qss

@@ -123,12 +123,17 @@ void dr_optimize::Optimize(QList<results_t> * dataSet, int Penfun, int Weight, i
             //data length Sanity check - we only do the calculation when we have all the data
             if (n!=(VaSteps_+1)*(VgSteps_+1)) return;
             IaParams.section_b = false;
-            IaParams.p[EX] = 1.5;
-            IaParams.p[KG1]=1000;
-            IaParams.p[KP]=600;
-            IaParams.p[KVB]=3;
+            IaParams.p[EX] = 1.4;
+            IaParams.p[KG1]=500;
+            IaParams.p[KP]=500;
+            IaParams.p[KVB]=1;
             IaParams.p[MU]=50;
             IaParams.section_b = false;
+            TriodeInit();
+            IaParams.f = 0;
+            IaParams.n = KVB+1;
+            IaParams.errFun = & dr_optimize::TriErr;
+
             OptAll("Triode(all)");
             findLinear( 0, n, &dr_optimize::TriIa );
             break;
@@ -189,13 +194,14 @@ void dr_optimize::Optimize(QList<results_t> * dataSet, int Penfun, int Weight, i
             //IaParams.p[EX] = 1.4;
             //IaParams.p[KG1]=2000;
             //IaParams.p[KP]=250;
-            //IaParams.p[KVB]=25;
-            //IaParams.p[KG2]=5000;
+            IaParams.p[KVB]=25;
+            IaParams.p[KG2]=5000;
+            //Estimates
             IaParams.f = 0;
             IaParams.n = KVB+1;
             IaParams.errFun = &dr_optimize::KpAErr;
             OptAll("KOREN(penA)");
-            EstimateKG2();
+            //EstimateKG2();
             IaParams.f = KG2;
             IaParams.n = KG2+1;
             IaParams.errFun = &dr_optimize::KpSErr;
@@ -210,6 +216,8 @@ void dr_optimize::Optimize(QList<results_t> * dataSet, int Penfun, int Weight, i
             IaParams.section_b = false;
             TriodeInit(); //get guesses for a triode
             IaParams.section_b=false;
+
+            //Optimize Triode
             IaParams.f = 0;
             IaParams.n = KVB+1;
             IaParams.errFun = &dr_optimize::TriErr;
@@ -657,7 +665,7 @@ int dr_optimize::TriodeInit()
         a -= (estList->at(i+1).y - estList->at(i).y)/(estList->at(i+1).x - estList->at(i).x);
     }
     a /= (float)(estList->length()-1);
-    if ( a>5 && a <=200) {
+    if ( a>2 && a <=200) {
         IaParams.p[MU] =a;
     } else {
         IaParams.p[MU] =25;
@@ -706,7 +714,7 @@ int dr_optimize::TriodeInit()
         // ---------------------------------------
         estList->clear();
         for(int i=0; i < n; i++){
-            if (IaParams.data->at(i).Vg!=0 && IaParams.data->at(i).Va>100 && IaParams.data->at(i).Ia!=-1) {
+            if (IaParams.data->at(i).Vg!=0 && IaParams.data->at(i).Va>100 && IaParams.data->at(i).Ia>0.01) {
                 pair.x = 1/IaParams.p[MU] + IaParams.data->at(i).Vg/IaParams.data->at(i).Va;
                 pair.y = log(IaParams.data->at(i).Ia/1000 * IaParams.p[KG1]) /IaParams.p[EX];
                 estList->append(pair);
@@ -714,7 +722,9 @@ int dr_optimize::TriodeInit()
         }
         //find average kp from slopes
         a=0;
+        int b=0;
         for(int i=1; i < estList->length(); i++) {
+            b = (estList->at(i).y - estList->at(i-1).y)/(estList->at(i).x - estList->at(i-1).x);
             a += (estList->at(i).y - estList->at(i-1).y)/(estList->at(i).x - estList->at(i-1).x);
         }
         a /= (float)(estList->length()-1);
@@ -729,6 +739,7 @@ int dr_optimize::TriodeInit()
         float kvb=0, kvb1,e;
         float e1;
         for(int i=0; i < n; i++) {
+#if 0
             kvb = 5000; //guess for KP
             kvb1 = 2500;
             if (IaParams.data->at(i).Ia!=-1) {
@@ -748,19 +759,23 @@ int dr_optimize::TriodeInit()
                 k++;
                 IaParams.p[KVB] += kvb1;
             }
-        }
-            /* if (IaParams.p[KP] *( 1/IaParams.p[MU] + IaParams.data->at(i).Vg/IaParams.data->at(i).Va) >2)
-            {
-                a = IaParams.data->at(i).Vg/(
-                        pow(IaParams.data->at(i).Ia/1000*IaParams.p[KG1],1/IaParams.p[EX])
-                        /IaParams.data->at(i).Va
-                        - 1/IaParams.p[MU]
-                    );
-                k++;
-                b =  a*a - IaParams.data->at(i).Va * IaParams.data->at(i).Va;
-                IaParams.p[KVB] += b;
-            }*/
-        IaParams.p[KVB] /= n;
+#else
+            if (IaParams.data->at(i).Ia!=-1) {
+                if (IaParams.p[KP] *( 1/IaParams.p[MU] + IaParams.data->at(i).Vg/IaParams.data->at(i).Va) >2)
+                {
+                    a = IaParams.data->at(i).Vg/(
+                            pow(IaParams.data->at(i).Ia/1000*IaParams.p[KG1],1/IaParams.p[EX])
+                            /IaParams.data->at(i).Va
+                            - 1/IaParams.p[MU]
+                        );
+                    k++;
+                    b =  a*a - IaParams.data->at(i).Va * IaParams.data->at(i).Va;
+                    IaParams.p[KVB] += b;
+                }
+            }
+#endif
+      }
+    IaParams.p[KVB] /= k;
     }
     //done with estimate list
     if (estList !=0) delete estList;
@@ -946,7 +961,7 @@ float dr_optimize::KpIa(IaParams_t * p, float Va, float Vg2, float Vg) {
 }
 
 double dr_optimize::KpSErr(const gsl_vector * xv, void *p) {
-    float Ia, Is;
+    float Is;
     IaParams_t * param =  (IaParams_t *) p;
     int n = param->data->length();
     for (int i=param->f; i < param->n; i++) param->o[i] = param->p[i] * fabs(gsl_vector_get(xv,i-param->f));
@@ -1371,7 +1386,7 @@ void dr_optimize::Save_Spice_Model(QWidget * widget, QByteArray tnameba) {
                     case KOREN_P:
                     {
                         datafile.write("****************************************************\n");
-                        datafile.write("Pentode model parameters created with uTmax www.bmamps.com\n");
+                        datafile.write("* Pentode model parameters created with uTmax www.bmamps.com\n");
                         sprintf(m,"* KOREN Pentode with elementary screen current model\n");
                         datafile.write(m);
                         sprintf(m,".SUBCKT %s 1 2 3 4 ; P G1 G1 C (Pentode) ; PENTODE SECTION\n",tname);
