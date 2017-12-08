@@ -27,7 +27,7 @@ CONFIG(release, debug|release) {
 
 # macx unix win32
 !win32 {
- 	include(../3rdparty/qextserialport-1.2rc/src/qextserialport.pri)
+# 	include(../3rdparty/qextserialport-1.2rc/src/qextserialport.pri)
 	include(../3rdparty/gsl/gsl.pri)
 }
 win32 {
