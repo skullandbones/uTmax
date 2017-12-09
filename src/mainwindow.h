@@ -59,8 +59,9 @@ public:
     calData_t calData;
     QString dataFileName;
     QString calFileName;
-    void ReadCalibration();
-    void ReadDataFile();
+    bool ReadCalibration();
+    bool ReadDataFile();
+    void SerialPortDiscovery();
     ~MainWindow();
 
     void SaveCalFile();
@@ -144,6 +145,7 @@ public:
     QList<QSerialPortInfo> serPortInfo;
     QString comport;
     void OpenComPort(const QString *);
+    QString uTmaxDir;
 
 
 public slots:
@@ -186,7 +188,6 @@ private:
     Ui::MainWindow *ui;
     void PenUpdate();
     void updateLcdsWithModel();
-    void SerialPortDiscovery();
     void updateSweepGreying();
     void updateTubeGreying();
     void CreateTestVectors();
@@ -197,7 +198,6 @@ private:
                     Sweep_set, Sweep_adc, Idle, wait_adc,
                     hold_ack, hold, heat_done,HeatOff};
     Status_t status;
-    QString uTmaxDir;
     int startSweep;
     int VsStep;
     int VgStep;
