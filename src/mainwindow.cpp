@@ -125,7 +125,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->AutoPath->setText(QDir::homePath());
     QPixmap logo = QPixmap(":/uTracer.png");
     ui->Logo->setPixmap(logo);
-    this->setWindowTitle("utMax 1.3a");
+    this->setWindowTitle("uTmax 1.3a.1-rc1 Dean's version");
 
     ClearLCDs();
 
