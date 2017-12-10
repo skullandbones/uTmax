@@ -184,11 +184,12 @@ void debug_dialog::on_OK_clicked()
 
 void debug_dialog::on_Ping_clicked()
 {
-    mw->sendADC=true;
+    // Button is actually "Read ADC"
+    mw->RequestOperation((Operation_t) ReadADC);
 }
 
 
 void debug_dialog::on_pushPing_clicked()
 {
-    mw->sendPing=true;
+    mw->RequestOperation((Operation_t) Ping);
 }

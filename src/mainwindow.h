@@ -151,6 +151,7 @@ public:
     void DataSaveDialog_clicked(const QString &);
     bool OpenComPort(const QString *, bool updateCalFile);
     bool CloseComPort();
+    void RequestOperation(Operation_t ReqOperation);
 
 public slots:
 
@@ -294,5 +295,7 @@ private:
     void RePlot(QList<results_t> *);
     bool SaveTubeDataFile();
     int RxPkt(int len, QByteArray *pCmd, QByteArray *pResponse);
+    void StartUpMachine();
+    void StopTheMachine();
 };
 #endif // MAINWINDOW_H

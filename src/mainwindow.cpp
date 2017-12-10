@@ -151,12 +151,11 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    qDebug() << "~MainWindow: Destroy everything!";
     delete optimizer;
-    if (timer) {
-        qDebug() << "~MainWindow: Disconnecting timer";
-        disconnect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
-        delete timer;
-    }
+
+    // Stop the machine
+    StopTheMachine();
 
     // Close open port
     CloseComPort();
@@ -227,17 +226,8 @@ bool MainWindow::OpenComPort(const QString *portName, bool updateCalFile)
     }
     ui->statusBar->showMessage(msg);
 
-    // Start RxData Timer
-    if (openResult && timer == NULL)
-    {
-        timer = new QTimer(this);
-        connect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
-        ui->statusBar->showMessage("Starting up...");
-        timer_on=true;
-        timeout=PING_TIMEOUT;
-        sendADC=true;
-        timer->start(TIMER_SET);
-    }
+    // Probe for the uTracer being present
+    if (openResult) RequestOperation((Operation_t) Probe);
 
     return(openResult);
 }
@@ -254,6 +244,82 @@ bool MainWindow::CloseComPort()
         portInUse->close();
         delete portInUse;
         portInUse = NULL;
+    }
+}
+
+void MainWindow::RequestOperation(Operation_t ReqOperation)
+{
+    switch (ReqOperation)
+    {
+        case Stop:
+        {
+            qDebug() << "RequestOperation: Stop";
+            stop = true;
+            StartUpMachine();
+            break;
+        }
+        case Probe:
+        {
+            qDebug() << "RequestOperation: Probe";
+            ui->statusBar->showMessage("Starting up...");
+            sendADC = true;
+            StartUpMachine();
+            break;
+        }
+        case Ping:
+        {
+            qDebug() << "RequestOperation: Ping";
+            sendPing = true;
+            StartUpMachine();
+            break;
+        }
+        case ReadADC:
+        {
+            qDebug() << "RequestOperation: ReadADC";
+            sendADC = true;
+            StartUpMachine();
+            break;
+        }
+        case Start:
+        {
+            qDebug() << "RequestOperation: Start";
+            if (SetUpSweepParams())
+            {
+                startSweep += 1;
+                StartUpMachine();
+            }
+            break;
+        }
+        default:
+        {
+            qDebug() << "ERROR: RequestOperation: Unrecognised operation:" << ReqOperation;
+            break;
+        }
+    }
+}
+
+void MainWindow::StartUpMachine()
+{
+    // Start up the machine
+    if (!timer)
+    {
+        qDebug() << "StartUpMachine: Starting up the machine!";
+        timer = new QTimer(this);
+        connect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
+        timer->start(TIMER_SET);
+    }
+}
+
+void MainWindow::StopTheMachine()
+{
+    // Stop the machine
+    if (timer)
+    {
+        qDebug() << "StopTheMachine: Destroying the timer";
+        timer->stop();
+        disconnect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
+        delete timer;
+        timer = NULL;
     }
 }
 
@@ -426,6 +492,11 @@ void MainWindow::RxData()
                 sendSer();
                 timer_on = true;
                 timeout = PING_TIMEOUT;
+            }
+            else
+            {
+                // All operations completed so stop
+                StopTheMachine();
             }
             break;
         }
@@ -2411,10 +2482,9 @@ bool MainWindow::SetUpSweepParams() {
     return true;
 }
 
-void MainWindow::on_Start_clicked() {
-    if (!SetUpSweepParams()) return;
-
-    startSweep+=1;
+void MainWindow::on_Start_clicked()
+{
+    RequestOperation((Operation_t) Start);
 }
 void MainWindow::CreateTestVectors()
 {
@@ -2536,8 +2606,9 @@ void MainWindow::CreateTestVectors()
 void MainWindow::on_VsStart_editingFinished() {
 }
 
-void MainWindow::on_Stop_clicked() {
-    stop=true;
+void MainWindow::on_Stop_clicked()
+{
+    RequestOperation((Operation_t) Stop);
 }
 
 
