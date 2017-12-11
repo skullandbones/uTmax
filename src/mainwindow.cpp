@@ -94,13 +94,14 @@ MainWindow::MainWindow(QWidget *parent) :
     options.VaScale=1.0;
     portInUse = NULL;
     penList = new QList<QPen>;
-    status=Idle;
-    startSweep=0;
-    stop=false;
-    timer=NULL;
-    newMessage=false;
-    sendADC=false;
-    sendPing=false;
+
+    timer = NULL;
+    status = Idle;
+    doStop = false;
+    doStart = false;
+    sendADC = false;
+    sendPing = false;
+
     VaADC=0;
     VsADC=0;
     VgADC=0;
@@ -257,7 +258,7 @@ void MainWindow::RequestOperation(Operation_t ReqOperation)
         case Stop:
         {
             qDebug() << "RequestOperation: Stop";
-            stop = true;
+            doStop = true;
             StartUpMachine();
             break;
         }
@@ -286,11 +287,8 @@ void MainWindow::RequestOperation(Operation_t ReqOperation)
         case Start:
         {
             qDebug() << "RequestOperation: Start";
-            if (SetUpSweepParams())
-            {
-                startSweep += 1;
-                StartUpMachine();
-            }
+            doStart = true;
+            StartUpMachine();
             break;
         }
         default:
@@ -592,6 +590,8 @@ void MainWindow::RxData()
     static QByteArray response;
     static int distime;
     RxStatus_t RxCode;
+    static bool repeatTest = false;
+    static interrupted_t interrupted = {false, Idle, ""};
 
     // ---------------------------------------------------
     // Sanity check that the port is still OK
@@ -633,24 +633,122 @@ void MainWindow::RxData()
     }
 
     // ---------------------------------------------------
-    if (sendADC == true)
+    // Deal with user requests, communications must be idle
+    if ((RxCode == RXIDLE || RxCode == RXSUCCESS) && !interrupted.cmd)
     {
-        qDebug() << "RxData: Action sendADC";
-        heat = 0;
-        SendADCCommand(&CmdRsp);
-        status = wait_adc;
-        sendADC = false;
-        return;
+        if (doStop == true)
+        {
+            qDebug() << "RxData: Action doStop";
+
+            switch (status)
+            {
+                case Idle:
+                case Heating:
+                case heat_done:
+                {
+                    doStop = false;
+                    qDebug() << "RxData: Stop heating";
+                    HV_Discharge_Timer = 0;
+                    ui->HeaterProg->setValue(0);
+                    ui->statusBar->showMessage("Heater off");
+                    SendFilamentCommand(&CmdRsp, 0);
+                    status = HeatOff;
+                    return;
+                }
+                case Sweep_set:
+                case Sweep_adc:
+                case hold:
+                {
+                    doStop = false;
+                    qDebug() << "RxData: Stop sweeping";
+                    float v = VaNow > VsNow ? VaNow : VsNow;
+                    distime = (int)(DISTIME * v / 400);
+                    HV_Discharge_Timer = distime;
+                    ui->statusBar->showMessage("Abort:Heater off");
+                    SendFilamentCommand(&CmdRsp, 0);
+                    ui->CaptureProg->setValue(0);
+                    status = HeatOff;
+                    return;
+                }
+                default:
+                {
+                    qDebug() << "ERROR: RxData: Cannot stop from state:" << status_name[status];
+                    break;
+                }
+            }
+        }
+        else if (sendPing == true)
+        {
+            qDebug() << "RxData: Action sendPing";
+            interrupted.cmd = true;
+            interrupted.status = status;
+            interrupted.response = response;
+            status = send_ping;
+            sendPing = false;
+        }
+        else if (sendADC == true)
+        {
+            qDebug() << "RxData: Action sendADC";
+            interrupted.cmd = true;
+            interrupted.status = status;
+            interrupted.response = response;
+            status = read_adc;
+            sendADC = false;
+        }
+        else if (doStart == true)
+        {
+            qDebug() << "RxData: Action doStart";
+            doStart = false;
+            if (!SetUpSweepParams()) return;
+
+            switch (status)
+            {
+                case Idle:
+                {
+                    qDebug() << "RxData: Start from Idle";
+                    repeatTest = false;
+                    status = start_sweep_heater;
+                    break;
+                }
+                case Heating:
+                {
+                    qDebug() << "RxData: Jump to max heating";
+                    heat = HEAT_CNT_MAX;
+                    break;
+                }
+                case heat_done:
+                {
+                    qDebug() << "RxData: Start the sweep test now";
+                    if (dataStore->length() > 0) dataStore->clear();
+                    CreateTestVectors();
+                    curve = 0;
+                    status = Sweep_set;
+                    break;
+                }
+                case Sweep_adc:
+                case Sweep_set:
+                {
+                    qDebug() << "RxData: Repeat the test run";
+                    repeatTest = true;
+                    break;
+                }
+                default:
+                {
+                    qDebug() << "ERROR: RxData: Cannot start from state:" << status_name[status];
+                    break;
+                }
+            }
+        }
     }
 
-    if (sendPing == true)
+    // Instead of going to Idle, spoof the interrupted command response
+    if (interrupted.cmd && status == Idle)
     {
-        qDebug() << "RxData: Action sendPing";
-        heat = 0;
-        SendEndMeasurementCommand(&CmdRsp);
-        status = WaitPing;
-        sendPing = false;
-        return;
+        interrupted.cmd = false;
+        RxCode = RXSUCCESS;
+        response = interrupted.response;
+        status = interrupted.status;
+        qDebug() << "Return from interrupted state:" << status_name[status];
     }
 
     // ---------------------------------------------------
@@ -660,43 +758,45 @@ void MainWindow::RxData()
 
     switch (status)
     {
-        case Idle:
+        case send_ping:
+        {
+            heat = 0;
+            SendEndMeasurementCommand(&CmdRsp);
+            status = WaitPing;
+            break;
+        }
+        case read_adc:
+        {
+            heat = 0;
+            SendADCCommand(&CmdRsp);
+            status = wait_adc;
+            break;
+        }
+        case start_sweep_heater:
         {
             time = 0;
 
-            if (startSweep > 0)
-            {
-                startSweep -= 1;
-                StoreData(false); //Init data store
-                VsStep = 0;
-                VgStep = 0;
-                VaStep = 0;
-                curve = 0;
+            StoreData(false); // Init data store
+            VsStep = 0;
+            VgStep = 0;
+            VaStep = 0;
+            curve = 0;
 
-                if (heat != HEAT_CNT_MAX)
-                {
-                    ui->statusBar->showMessage("Heating setup");
-                    status = Heating_wait00;
-                    heat = 0;
-                    ui->HeaterProg->setValue(1);
-                }
-                else
-                {
-                    ui->statusBar->showMessage("Sweep setup");
-                    status = Sweep_set;
-                    delay=options.Delay;
-                }
+            ui->statusBar->showMessage("Heating setup");
+            heat = 0;
+            ui->HeaterProg->setValue(1);
+            ui->CaptureProg->setValue(1);
 
-                ui->CaptureProg->setValue(1);
+            SendStartMeasurementCommand(&CmdRsp, lim[options.Ilimit], avg[options.AvgNum],
+                                        Ir[options.IsRange], Ir[options.IaRange]);
 
-                SendStartMeasurementCommand(&CmdRsp, lim[options.Ilimit], avg[options.AvgNum],
-                                            Ir[options.IsRange], Ir[options.IaRange]);
-            }
-            else
-            {
-                // All operations completed so stop
-                StopTheMachine();
-            }
+            status = Heating_wait00;
+            break;
+        }
+        case Idle:
+        {
+            // All operations completed so stop
+            StopTheMachine();
             break;
         }
         case WaitPing:
@@ -744,25 +844,10 @@ void MainWindow::RxData()
         }
         case Heating:
         {
-            if (stop)
-            {
-                stop = false;
-                status = HeatOff;
-                HV_Discharge_Timer = 0;
-                ui->HeaterProg->setValue(0);
-                ui->statusBar->showMessage("Heater off");
-                SendFilamentCommand(&CmdRsp, 0);
-                heat = 0;
-            }
-            else if (RxCode == RXSUCCESS)
+            if (RxCode == RXSUCCESS)
             {
                 if (heat <= HEAT_CNT_MAX)
                 {
-                    if (startSweep > 0)
-                    {
-                        startSweep -= 1;
-                        heat = HEAT_CNT_MAX;
-                    }
                     ui->HeaterProg->setValue((100 * heat) / HEAT_CNT_MAX);
                     VfADC = GetVf((float)heat);
                     if (VfADC > 1023) VfADC = 1023;
@@ -783,17 +868,8 @@ void MainWindow::RxData()
             time += TIMER_SET;
             ui->statusBar->showMessage(m);
             delay = options.Delay;
-            if (stop)
+            if (time / 1000 == HEAT_WAIT_SECS)
             {
-                stop = false;
-                status = HeatOff;
-                HV_Discharge_Timer = 0;
-                SendFilamentCommand(&CmdRsp, 0);
-                ui->CaptureProg->setValue(0);
-            }
-            else if (startSweep > 0 || time / 1000 == HEAT_WAIT_SECS)
-            {
-                startSweep = 0;
                 if (dataStore->length() > 0) dataStore->clear();
                 CreateTestVectors();
                 curve = 0;
@@ -803,18 +879,7 @@ void MainWindow::RxData()
         }
         case Sweep_set:
         {
-            if (stop)
-            {
-                stop = false;
-                status = HeatOff;
-                float v = VaNow > VsNow ? VaNow : VsNow;
-                distime = (int)(DISTIME * v / 400);
-                HV_Discharge_Timer = distime;
-                ui->statusBar->showMessage("Abort:Heater off");
-                SendFilamentCommand(&CmdRsp, 0);
-                ui->CaptureProg->setValue(0);
-            }
-            else if (delay == 0)
+            if (delay == 0)
             {
                 status=hold_ack;
                 ui->statusBar->showMessage("Sweep Measure");
@@ -837,7 +902,6 @@ void MainWindow::RxData()
                 if (VaNow > 425 || VsNow > 425)
                 {
                     ui->statusBar->showMessage("Internal Error: Va or Vs excessive");
-                    stop = false;
                     status = HeatOff;
                     float v = VaNow > VsNow ? VaNow : VsNow;
                     distime = (int)(DISTIME * v / 400);
@@ -863,18 +927,7 @@ void MainWindow::RxData()
         }
         case hold:
         {
-            if (stop)
-            {
-                stop = false;
-                status = HeatOff;
-                float v = VaNow > VsNow ? VaNow : VsNow;
-                distime = (int)(DISTIME * v / 400);
-                HV_Discharge_Timer = distime;
-                ui->statusBar->showMessage("Abort:Heater off");
-                SendFilamentCommand(&CmdRsp, 0);
-                heat = 0;
-            }
-            else if (delay == 0)
+            if (delay == 0)
             {
                 status = Sweep_adc;
                 ui->statusBar->showMessage("Sweep (set measurement parameters)");
@@ -884,7 +937,6 @@ void MainWindow::RxData()
                 if (VaNow > 425 || VsNow > 425)
                 {
                     ui->statusBar->showMessage("Internal Error: Va or Vs excessive");
-                    stop = false;
                     status = HeatOff;
                     float v = VaNow > VsNow ? VaNow : VsNow;
                     distime = (int)(DISTIME * v / 400);
@@ -980,8 +1032,9 @@ void MainWindow::RxData()
                 }
                 else
                 {
-                    if (startSweep > 0) //skip re-heating
+                    if (repeatTest) //skip re-heating
                     {
+                        repeatTest = false;
                         if (LOGGING) QTextStream(&logFile) << "+sweep complete warm start\n";
                         status = heat_done;
                         ui->statusBar->showMessage("Sweep complete");
@@ -1004,6 +1057,8 @@ void MainWindow::RxData()
         }
         case HeatOff:
         {
+            if (RxCode != RXIDLE && RxCode != RXSUCCESS) break;
+
             if (HV_Discharge_Timer>0) HV_Discharge_Timer--;
             if (HV_Discharge_Timer == (distime-1))
             {

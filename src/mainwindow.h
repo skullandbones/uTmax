@@ -183,22 +183,30 @@ private:
 
     enum Status_t { WaitPing, Heating, Heating_wait00, Heating_wait_adc,
                     Sweep_set, Sweep_adc, Idle, wait_adc,
-                    hold_ack, hold, heat_done, HeatOff};
+                    hold_ack, hold, heat_done, HeatOff, read_adc, send_ping,
+                    start_sweep_heater, max_state};
     Status_t status;
-    QString status_name[HeatOff + 1] = {"WaitPing", "Heating", "Heating_wait00", "Heating_wait_adc",
-                                        "Sweep_set", "Sweep_adc", "Idle", "wait_adc",
-                                        "hold_ack", "hold", "heat_done", "HeatOff"};
+    QString status_name[max_state] = {"WaitPing", "Heating", "Heating_wait00", "Heating_wait_adc",
+                                      "Sweep_set", "Sweep_adc", "Idle", "wait_adc",
+                                      "hold_ack", "hold", "heat_done", "HeatOff", "read_adc", "send_ping",
+                                      "start_sweep_heater"};
 
-    int startSweep;
+    struct interrupted_t
+    {
+        bool cmd;
+        Status_t status;
+        QByteArray response;
+    };
+
     int VsStep;
     int VgStep;
     int VaStep;
     int curve;
     int heat;
-    bool stop;
+    bool doStop;
+    bool doStart;
     QTimer *timer;
     bool ok;
-    bool newMessage;
     float Vdi;
     float power;
 
