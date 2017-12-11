@@ -307,7 +307,7 @@ void MainWindow::StartUpMachine()
         qDebug() << "StartUpMachine: Starting up the machine!";
         timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(RxData()));
-        timer->start(TIMER_SET);
+        timer->start(STATE_PERIOD);
     }
 }
 
@@ -580,15 +580,13 @@ void MainWindow::SendADCCommand(CommandResponse_t *pSendCmdRsp)
 // The main control process
 void MainWindow::RxData()
 {
-    static int time;
+    static int timeIt;
     static int delay;
-    static int HV_Discharge_Timer;
     //I Limits         200,  175,  150,  125, 100,    50,   25,   12,  7mA,  Off
     static int lim[]={0x8f, 0x8d, 0xad, 0xab, 0x84, 0xa4, 0xa2, 0xa1, 0x80, 0x00};
     static int avg[]={0x40, 1, 2, 4, 8, 16, 32, 0x40};
     static int Ir[]={8,1,2,3,4,5,6,7};
     static QByteArray response;
-    static int distime;
     RxStatus_t RxCode;
     static bool repeatTest = false;
     static interrupted_t interrupted = {false, Idle, ""};
@@ -648,7 +646,7 @@ void MainWindow::RxData()
                 {
                     doStop = false;
                     qDebug() << "RxData: Stop heating";
-                    HV_Discharge_Timer = 0;
+                    timeIt = 0;    // No discharge time period
                     ui->HeaterProg->setValue(0);
                     ui->statusBar->showMessage("Heater off");
                     SendFilamentCommand(&CmdRsp, 0);
@@ -662,8 +660,7 @@ void MainWindow::RxData()
                     doStop = false;
                     qDebug() << "RxData: Stop sweeping";
                     float v = VaNow > VsNow ? VaNow : VsNow;
-                    distime = (int)(DISTIME * v / 400);
-                    HV_Discharge_Timer = distime;
+                    timeIt = (int)(DISTIME * v / 400);
                     ui->statusBar->showMessage("Abort:Heater off");
                     SendFilamentCommand(&CmdRsp, 0);
                     ui->CaptureProg->setValue(0);
@@ -713,7 +710,7 @@ void MainWindow::RxData()
                 case Heating:
                 {
                     qDebug() << "RxData: Jump to max heating";
-                    heat = HEAT_CNT_MAX;
+                    timeIt = HEAT_CNT_MAX;
                     break;
                 }
                 case heat_done:
@@ -760,22 +757,18 @@ void MainWindow::RxData()
     {
         case send_ping:
         {
-            heat = 0;
             SendEndMeasurementCommand(&CmdRsp);
             status = WaitPing;
             break;
         }
         case read_adc:
         {
-            heat = 0;
             SendADCCommand(&CmdRsp);
             status = wait_adc;
             break;
         }
         case start_sweep_heater:
         {
-            time = 0;
-
             StoreData(false); // Init data store
             VsStep = 0;
             VgStep = 0;
@@ -783,7 +776,6 @@ void MainWindow::RxData()
             curve = 0;
 
             ui->statusBar->showMessage("Heating setup");
-            heat = 0;
             ui->HeaterProg->setValue(1);
             ui->CaptureProg->setValue(1);
 
@@ -834,11 +826,10 @@ void MainWindow::RxData()
             {
                 VgNow=ui->VgStart->text().toFloat();
                 saveADCInfo(&response);
-                heat = 0;
                 status = Heating;
                 ui->statusBar->showMessage("Heating");
                 SendFilamentCommand(&CmdRsp, 0);
-                heat = 1;
+                timeIt = 1;
             }
             break;
         }
@@ -846,17 +837,18 @@ void MainWindow::RxData()
         {
             if (RxCode == RXSUCCESS)
             {
-                if (heat <= HEAT_CNT_MAX)
+                if (timeIt <= HEAT_CNT_MAX)
                 {
-                    ui->HeaterProg->setValue((100 * heat) / HEAT_CNT_MAX);
-                    VfADC = GetVf((float)heat);
+                    ui->HeaterProg->setValue((100 * timeIt) / HEAT_CNT_MAX);
+                    VfADC = GetVf((float)timeIt);
                     if (VfADC > 1023) VfADC = 1023;
                     SendFilamentCommand(&CmdRsp, (uint16_t)VfADC);
-                    heat++;
+                    timeIt++;
                 }
                 else
                 {
                     ui->HeaterProg->setValue(100);
+                    timeIt = 0;
                     status = heat_done;
                 }
             }
@@ -864,15 +856,18 @@ void MainWindow::RxData()
         }
         case heat_done:
         {
-            QString m = QString("Press 'start' when ready; heating for %1 secs").arg(time / 1000);
-            time += TIMER_SET;
-            ui->statusBar->showMessage(m);
-            delay = options.Delay;
-            if (time / 1000 == HEAT_WAIT_SECS)
+            if (timeIt < WARMUP_TICKS_MAX)
+            {
+                timeIt++;
+                QString m = QString("Press 'start' when ready; heating for %1 secs").arg(timeIt / TICKS_PER_SEC);
+                ui->statusBar->showMessage(m);
+            }
+            else
             {
                 if (dataStore->length() > 0) dataStore->clear();
                 CreateTestVectors();
                 curve = 0;
+                delay = options.Delay;
                 status = Sweep_set;
             }
             break;
@@ -904,11 +899,9 @@ void MainWindow::RxData()
                     ui->statusBar->showMessage("Internal Error: Va or Vs excessive");
                     status = HeatOff;
                     float v = VaNow > VsNow ? VaNow : VsNow;
-                    distime = (int)(DISTIME * v / 400);
-                    HV_Discharge_Timer = distime;
+                    timeIt = (int)(DISTIME * v / 400);
                     ui->statusBar->showMessage("Abort:Heater off");
                     SendFilamentCommand(&CmdRsp, 0);
-                    heat=0;
                     break;
                 }
                 VaADC = GetVa(VaNow);
@@ -939,11 +932,9 @@ void MainWindow::RxData()
                     ui->statusBar->showMessage("Internal Error: Va or Vs excessive");
                     status = HeatOff;
                     float v = VaNow > VsNow ? VaNow : VsNow;
-                    distime = (int)(DISTIME * v / 400);
-                    HV_Discharge_Timer = distime;
+                    timeIt = (int)(DISTIME * v / 400);
                     ui->statusBar->showMessage("Abort:Heater off");
                     SendFilamentCommand(&CmdRsp, 0);
-                    heat = 0;
                     break;
                 }
 
@@ -981,8 +972,7 @@ void MainWindow::RxData()
                         qDebug() << "Sweep_adc: Current Limit Abort";
                         status = HeatOff;
                         float v = VaNow > VsNow ? VaNow : VsNow;
-                        distime =(int)(DISTIME * v / 400);
-                        HV_Discharge_Timer =distime;
+                        timeIt =(int)(DISTIME * v / 400);
                         ui->CaptureProg->setValue(100);
                         SendFilamentCommand(&CmdRsp, 0);
                         break;
@@ -1042,14 +1032,13 @@ void MainWindow::RxData()
                     }
                     else
                     {
-                        status = HeatOff;
                         if (LOGGING) QTextStream(&logFile) << "+sweep complete heat off\n";
-                        float v = VaNow > VsNow ? VaNow : VsNow;
-                        distime = (int)(DISTIME * v / 400);
-                        HV_Discharge_Timer = distime;
                         ui->statusBar->showMessage("Sweep complete");
                         ui->CaptureProg->setValue(100);
+                        float v = VaNow > VsNow ? VaNow : VsNow;
+                        timeIt = (int)(DISTIME * v / 400);
                         SendFilamentCommand(&CmdRsp, 0);
+                        status = HeatOff;
                     }
                 }
             }
@@ -1057,14 +1046,12 @@ void MainWindow::RxData()
         }
         case HeatOff:
         {
-            if (RxCode != RXIDLE && RxCode != RXSUCCESS) break;
+            if (RxCode != RXSUCCESS) break;
 
-            if (HV_Discharge_Timer>0) HV_Discharge_Timer--;
-            if (HV_Discharge_Timer == (distime-1))
+            if (timeIt)
             {
                 ui->HeaterProg->setValue(0);
                 SendEndMeasurementCommand(&CmdRsp);
-                heat = 0;
                 if (ui->checkAutoNumber->isChecked())
                 {
                     if (!ui->checkQuickTest->isChecked()) on_actionSave_plot_triggered();
@@ -1072,16 +1059,30 @@ void MainWindow::RxData()
                     int fn = ui->AutoNumber->text().toInt(&ok);
                     ui->AutoNumber->setText(QString::number(fn + 1));
                 }
-            }
-            else if (HV_Discharge_Timer==0)
-            {
-                ui->statusBar->showMessage("Ready");
-                status=Idle;
+                status = Discharge;
             }
             else
             {
-                QString msg = QString("Countdown for HV to discharge: %1").arg(HV_Discharge_Timer);
+                ui->statusBar->showMessage("Ready");
+                status = Idle;
+            }
+            break;
+        }
+        case Discharge:
+        {
+            if (RxCode != RXIDLE && RxCode != RXSUCCESS) break;
+
+            if (timeIt)
+            {
+                QString msg = QString("Countdown for HV to discharge: %1").arg(timeIt / TICKS_PER_SEC);
                 ui->statusBar->showMessage(msg);
+
+                timeIt--;
+            }
+            else
+            {
+                ui->statusBar->showMessage("Ready");
+                status = Idle;
             }
             break;
         }
