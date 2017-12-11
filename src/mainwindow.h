@@ -196,12 +196,9 @@ private:
     int curve;
     int heat;
     bool stop;
-    bool timer_on;
-    int timeout;
     QTimer *timer;
     bool ok;
     bool newMessage;
-    QByteArray RxString;
     float Vdi;
     float power;
 
@@ -273,6 +270,38 @@ private:
 
     QSerialPort *portInUse;
 
+    enum RxState_t
+    {
+        RxIdle,
+        RxEchoed,
+        RxEchoError,
+        RxResponse,
+        RxComplete
+    };
+
+    enum TxState_t
+    {
+        TxIdle,
+        TxLoaded,
+        TxSending,
+        TxRxing,
+        TxComplete
+    };
+
+    struct CommandResponse_t
+    {
+        QByteArray Command;
+        int txPos;
+        TxState_t txState;
+        int ExpectedRspLen;
+        QByteArray Response;
+        int rxPos;
+        RxState_t rxState;
+        int timeout;
+    };
+
+    CommandResponse_t CmdRsp;
+
     // Function protoypes
     void PenUpdate();
     void updateLcdsWithModel();
@@ -285,7 +314,6 @@ private:
     int GetVs(float);
     int GetVg(float);
     int GetVf(float);
-    void sendSer();
     void StoreData(bool);
     void SetUpPlot();
     bool SetUpSweepParams();
@@ -294,8 +322,18 @@ private:
     void DoPlot(plotInfo_t *);
     void RePlot(QList<results_t> *);
     bool SaveTubeDataFile();
-    int RxPkt(int len, QByteArray *pCmd, QByteArray *pResponse);
+    int RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response);
     void StartUpMachine();
     void StopTheMachine();
+    void SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar);
+    void SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint8_t limits, uint8_t averaging,
+                                     uint8_t screenGain, uint8_t anodeGain);
+    void SendGetMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint16_t anodeV, uint16_t screenV,
+                                   uint16_t gridV, uint16_t filamentV);
+    void SendHoldMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint16_t anodeV, uint16_t screenV,
+                                    uint16_t gridV, uint16_t filamentV, int delay);
+    void SendEndMeasurementCommand(CommandResponse_t *pSendCmdRsp);
+    void SendFilamentCommand(CommandResponse_t *pSendCmdRsp, uint16_t filament);
+    void SendADCCommand(CommandResponse_t *pSendCmdRsp);
 };
 #endif // MAINWINDOW_H
