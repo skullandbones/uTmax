@@ -333,6 +333,11 @@ void MainWindow::SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxCha
 
     if (txLoad)
     {
+        if (pSendCmdRsp) {
+            if (pSendCmdRsp->txState != TxIdle)
+                qCritical() << "ERROR: SendCommand: Attempting to send new message before previous message completed!" \
+                            << pSendCmdRsp->txState;
+        }
         pSendCmdRsp = pCmdRsp;
         pSendCmdRsp->txState = TxLoaded;
     }
@@ -439,9 +444,9 @@ void MainWindow::readData()
     }
 }
 
-int MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response)
+void MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response, RxStatus_t *pRxStatus)
 {
-    int rxStatus = RXCONTINUE;
+    *pRxStatus = RXCONTINUE;
 
     if (pSendCmdRsp->timeout)
     {
@@ -452,8 +457,12 @@ int MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response)
             qDebug() << "RxPkt: TIMEOUT - try reading for missing RX";
             readData();
 
-            rxStatus = RXTIMEOUT;
+            *pRxStatus = RXTIMEOUT;
         }
+    }
+    else
+    {
+        *pRxStatus = RXIDLE;
     }
 
     if (pSendCmdRsp->rxState == RxComplete)
@@ -474,18 +483,19 @@ int MainWindow::RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response)
         echoString = pSendCmdRsp->Command;
         statusString = pSendCmdRsp->Response;
 
-        rxStatus = RXSUCCESS;
+        *pRxStatus = RXSUCCESS;
     }
 
-    if (rxStatus == RXTIMEOUT)
+    if (*pRxStatus == RXTIMEOUT)
     {
         // Failed to recover, so abandon the command / response
+        qDebug() << "RxPkt: TIMEOUT - failed to recover";
         response->clear();
         pSendCmdRsp->txState = TxIdle;
         pSendCmdRsp->rxState = RxIdle;
     }
 
-    return rxStatus;
+    qDebug() << "RxPkt: RxStatus is:" << RxStatusName[*pRxStatus];
 }
 
 void MainWindow::SendStartMeasurementCommand(CommandResponse_t *pSendCmdRsp, uint8_t limits, uint8_t averaging,
@@ -575,16 +585,57 @@ void MainWindow::RxData()
     static int time;
     static int delay;
     static int HV_Discharge_Timer;
-    char buf[30];
     //I Limits         200,  175,  150,  125, 100,    50,   25,   12,  7mA,  Off
     static int lim[]={0x8f, 0x8d, 0xad, 0xab, 0x84, 0xa4, 0xa2, 0xa1, 0x80, 0x00};
     static int avg[]={0x40, 1, 2, 4, 8, 16, 32, 0x40};
     static int Ir[]={8,1,2,3,4,5,6,7};
     static QByteArray response;
     static int distime;
+    RxStatus_t RxCode;
 
+    // ---------------------------------------------------
+    // Sanity check that the port is still OK
+    if (!portInUse)
+    {
+        ui->statusBar->showMessage("ERROR: The serial port is not available");
+        StopTheMachine();
+        return;
+    }
+
+    if (portInUse && !portInUse->isOpen())
+    {
+        ui->statusBar->showMessage("ERROR: The serial port closed unexpectedly!");
+        StopTheMachine();
+        return;
+    }
+
+    // ---------------------------------------------------
+    // Check for the uTracer response
+    RxPkt(&CmdRsp, &response, &RxCode);
+    // Check for timeout
+    if (RxCode == RXTIMEOUT)
+    {
+        qDebug() << "RxData: Action RxCode RXTIMEOUT";
+        ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
+        status = Idle;
+        StopTheMachine();
+        return;
+    }
+
+    // Check for invalid response
+    if (RxCode == RXINVALID)
+    {
+        qDebug() << "RxData: Action RxCode RXINVALID";
+        ui->statusBar->showMessage("Unexpected response from uTracer; power cycle and restart");
+        status = Idle;
+        StopTheMachine();
+        return;
+    }
+
+    // ---------------------------------------------------
     if (sendADC == true)
     {
+        qDebug() << "RxData: Action sendADC";
         heat = 0;
         SendADCCommand(&CmdRsp);
         status = wait_adc;
@@ -594,6 +645,7 @@ void MainWindow::RxData()
 
     if (sendPing == true)
     {
+        qDebug() << "RxData: Action sendPing";
         heat = 0;
         SendEndMeasurementCommand(&CmdRsp);
         status = WaitPing;
@@ -602,38 +654,10 @@ void MainWindow::RxData()
     }
 
     // ---------------------------------------------------
-    // Sanity check that the port is still OK
-    if (!portInUse || !portInUse->isOpen())
-    {
-        ui->statusBar->showMessage("COM port was closed, exit and restart.");
-        return;
-    }
-
-    // ---------------------------------------------------
-    // Check for the uTracer response
-    int RxCode = RxPkt(&CmdRsp, &response);
-    // Check for timeout
-    if (RxCode == RXTIMEOUT)
-    {
-        ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
-        SendEndMeasurementCommand(&CmdRsp);
-        response.clear();
-        status = Idle;
-        return;
-    }
-
-    // Check for invalid rsponse
-    if (RxCode == RXINVALID)
-    {
-        ui->statusBar->showMessage("Unexpected response from uTracer; power cycle and restart");
-        response.clear();
-        status = Idle;
-        return;
-    }
-
-    // ---------------------------------------------------
     // Main state machine
     // Check state
+    qDebug() << "RxData: status:" << status << ":" << status_name[status];
+
     switch (status)
     {
         case Idle:
@@ -1004,6 +1028,13 @@ void MainWindow::RxData()
                 QString msg = QString("Countdown for HV to discharge: %1").arg(HV_Discharge_Timer);
                 ui->statusBar->showMessage(msg);
             }
+            break;
+        }
+        default:
+        {
+            qCritical() << "ERROR: unknown status:" << status;
+            StopTheMachine();
+            break;
         }
     }
 }

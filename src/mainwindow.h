@@ -4,10 +4,7 @@
 #define TIMER_SET 500
 #define ADC_READ_TIMEOUT (30000/TIMER_SET)
 #define PING_TIMEOUT (5000/TIMER_SET)
-#define RXSUCCESS 1
-#define RXTIMEOUT -1
-#define RXCONTINUE 0
-#define RXINVALID -2
+
 #define HEAT_CNT_MAX 20
 #define HEAT_WAIT_SECS 60
 
@@ -184,11 +181,14 @@ private:
     // Type and variable declarations
     Ui::MainWindow *ui;
 
-
     enum Status_t { WaitPing, Heating, Heating_wait00, Heating_wait_adc,
                     Sweep_set, Sweep_adc, Idle, wait_adc,
-                    hold_ack, hold, heat_done,HeatOff};
+                    hold_ack, hold, heat_done, HeatOff};
     Status_t status;
+    QString status_name[HeatOff + 1] = {"WaitPing", "Heating", "Heating_wait00", "Heating_wait_adc",
+                                        "Sweep_set", "Sweep_adc", "Idle", "wait_adc",
+                                        "hold_ack", "hold", "heat_done", "HeatOff"};
+
     int startSweep;
     int VsStep;
     int VgStep;
@@ -302,6 +302,19 @@ private:
 
     CommandResponse_t CmdRsp;
 
+    enum RxStatus_t
+    {
+        RXSUCCESS,
+        RXCONTINUE,
+        RXIDLE,
+        RXTIMEOUT,
+        RXINVALID,
+        RXMAX
+    };
+
+    QString RxStatusName[RXMAX] = {"RXSUCCESS", "RXCONTINUE", "RXIDLE",
+                                   "RXTIMEOUT", "RXINVALID"};
+
     // Function protoypes
     void PenUpdate();
     void updateLcdsWithModel();
@@ -322,7 +335,7 @@ private:
     void DoPlot(plotInfo_t *);
     void RePlot(QList<results_t> *);
     bool SaveTubeDataFile();
-    int RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response);
+    void RxPkt(CommandResponse_t *pSendCmdRsp, QByteArray *response, RxStatus_t *pRxStatus);
     void StartUpMachine();
     void StopTheMachine();
     void SendCommand(CommandResponse_t *pCmdRsp, bool txLoad, char rxChar);
