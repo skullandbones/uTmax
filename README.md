@@ -1,5 +1,17 @@
 # uTmax
-uTmax Linux GUI program for the uTracer3 Thermionic Valve Tester
+uTmax Linux GUI program for the uTracer3 Thermionic Valve Tester.
+
+```
+Active branches:
+uTmax_1.3a_dev
+
+Dean's Release branches:
+uTmax_1.3a.1 also tagged as v1.3a.1 (baseline is 1.3a)
+uTmax_1.0e.1 also tagged as v1.0e.1 (baseline is 1.0e)
+```
+
+Nick Barton's original GPLv3 released source code is available from
+https://bmamps.com/v01/home/techie-corner/utracer/
 
 The original uTmax 1.0e source code has the following copyright and license
 statements.
