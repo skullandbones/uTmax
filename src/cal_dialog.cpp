@@ -112,7 +112,7 @@ void Cal_Dialog::on_VsuSli_valueChanged(int value)
 
 void Cal_Dialog::on_Vg1Sli_valueChanged(int value)
 {
-    ui->Vg1Val->setText(QString::number(RealVal(value*2)));
+    ui->Vg1Val->setText(QString::number(RealVal(value)));
     mw->calData.Vg1Val=RealVal(value);
 }
 
