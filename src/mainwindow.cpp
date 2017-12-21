@@ -615,7 +615,7 @@ void MainWindow::RxData()
     {
         qDebug() << "RxData: Action RxCode RXTIMEOUT";
         ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
-        status = Idle;
+        status = CommsFail;
         StopTheMachine();
         return;
     }
@@ -625,7 +625,7 @@ void MainWindow::RxData()
     {
         qDebug() << "RxData: Action RxCode RXINVALID";
         ui->statusBar->showMessage("Unexpected response from uTracer; power cycle and restart");
-        status = Idle;
+        status = CommsFail;
         StopTheMachine();
         return;
     }
@@ -666,6 +666,14 @@ void MainWindow::RxData()
                     ui->CaptureProg->setValue(0);
                     status = HeatOff;
                     return;
+                }
+                case HeatOff:
+                case Discharge:
+                case CommsFail:
+                case WaitCommsGood:
+                {
+                    qDebug() << "RxData: stop is pending after state:" << status_name[status];
+                    break;
                 }
                 default:
                 {
@@ -1048,10 +1056,12 @@ void MainWindow::RxData()
         {
             if (RxCode != RXSUCCESS) break;
 
+            ui->HeaterProg->setValue(0);
+            SendEndMeasurementCommand(&CmdRsp);
+            status = Discharge;
+
             if (timeIt)
             {
-                ui->HeaterProg->setValue(0);
-                SendEndMeasurementCommand(&CmdRsp);
                 if (ui->checkAutoNumber->isChecked())
                 {
                     if (!ui->checkQuickTest->isChecked()) on_actionSave_plot_triggered();
@@ -1059,12 +1069,6 @@ void MainWindow::RxData()
                     int fn = ui->AutoNumber->text().toInt(&ok);
                     ui->AutoNumber->setText(QString::number(fn + 1));
                 }
-                status = Discharge;
-            }
-            else
-            {
-                ui->statusBar->showMessage("Ready");
-                status = Idle;
             }
             break;
         }
@@ -1082,6 +1086,26 @@ void MainWindow::RxData()
             else
             {
                 ui->statusBar->showMessage("Ready");
+                status = Idle;
+            }
+            break;
+        }
+        case CommsFail:
+        {
+            // Attempt to send the end measurement command to trigger discharge
+            SendEndMeasurementCommand(&CmdRsp);
+            status = WaitCommsGood;
+            break;
+        }
+        case WaitCommsGood:
+        {
+            qDebug() << "Waiting for good comms...";
+
+            if (RxCode == RXSUCCESS)
+            {
+                qDebug() << "Got good comms!";
+                ui->statusBar->showMessage("Communications now working");
+                interrupted.cmd = false;
                 status = Idle;
             }
             break;
