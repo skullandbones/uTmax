@@ -51,7 +51,7 @@ private:
     plotInfo_t plot1;
     void UpdateTitle(QString tube);
     QList<QPen> * ppenList=0;
-    QCPPlotTitle * title = 0;
+    QCPTextElement * title = 0;
 
 };
 
