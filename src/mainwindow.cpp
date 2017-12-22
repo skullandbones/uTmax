@@ -2200,7 +2200,7 @@ bool MainWindow::SaveTubeDataFile() {
         QTextStream out(&datafile);
 
         out << "ID,A,G2,G1,G1b,Cathode,G3,Heater,Heater,Htr Volts,SPICE model,VaStart,VaEnd,VaStep,VsStart," <<
-               "VsEnd,VsStep,VgStart,VgEnd,VgStep,Vca,Dva,Vcg2,Dvg2,Vcg,Dvg,Power,EmmVa,EmmVs,EmmVg,gm1Typ,gm1Del,gm2Typ,gm1Del\n";
+               "VsEnd,VsStep,VgStart,VgEnd,VgStep,Vca,Dva,Vcg2,Dvg2,Vcg,Dvg,Power,EmmVa,EmmVs,EmmVg,gm1Typ,gm1Del,gm2Typ,gm2Del\n";
         for (int i=0; i< tubeDataList->length(); i++) {
             out << tubeDataList->at(i).ID << ","
                 << tubeDataList->at(i).Anode << ","
