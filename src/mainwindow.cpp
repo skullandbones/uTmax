@@ -2680,57 +2680,66 @@ void MainWindow::CreateTestVectors()
     sweepList->clear();
     power = 0;
     tubeData.powerLim = ui->PowLim->text().toFloat();
-    VaNow = ui->VaStart->text().toFloat();
-    VsNow = ui->VsStart->text().toFloat();
-    VgNow = ui->VgStart->text().toFloat();
     VaStart = ui->VaStart->text().toFloat();
+    VaNow = VaStart;
     VsStart = ui->VsStart->text().toFloat();
+    VsNow = VsStart;
     VgStart = ui->VgStart->text().toFloat();
+    VgNow = VgStart;
     VaEnd = ui->VaEnd->text().toFloat();
     VsEnd = ui->VsEnd->text().toFloat();
     VgEnd = ui->VgEnd->text().toFloat();
+
     if (ui->checkQuickTest->isChecked()){
         if ((tubeData.Model==TRIODE) || (tubeData.Model==DUAL_TRIODE)) {
             ui->Vcs->setText( ui->Vca->text() );
         }
-        test_vector.Va = ui->Vca->text().toFloat()*(1 - ui->DeltaVa->text().toFloat()/200);
-        test_vector.Vs = ui->Vcs->text().toFloat();
-        test_vector.Vg = ui->Vcg->text().toFloat();
-        sweepList->append(test_vector);// Va
 
-        test_vector.Va = ui->Vca->text().toFloat()*(1 + ui->DeltaVa->text().toFloat()/200);
-        sweepList->append(test_vector); //Va
+        float Vca = ui->Vca->text().toFloat();
+        float Vcs = ui->Vcs->text().toFloat();
+        float Vcg = ui->Vcg->text().toFloat();
+        float DeltaVa = ui->DeltaVa->text().toFloat();
+        float DeltaVs = ui->DeltaVs->text().toFloat();
+        float DeltaVg = ui->DeltaVg->text().toFloat();
 
-        test_vector.Va = ui->Vca->text().toFloat();
-        test_vector.Vs = ui->Vcs->text().toFloat()*(1 - ui->DeltaVs->text().toFloat()/200);
-        sweepList->append(test_vector);//Vs
+        test_vector.Va = Vca * (1 - DeltaVa/200);
+        test_vector.Vs = Vcs;
+        test_vector.Vg = Vcg;
+        sweepList->append(test_vector); // Va
 
-        test_vector.Vs = ui->Vcs->text().toFloat()*(1 + ui->DeltaVs->text().toFloat()/200);
-        sweepList->append(test_vector);//Vs
+        test_vector.Va = Vca * (1 + DeltaVa/200);
+        sweepList->append(test_vector); // Va
 
-        test_vector.Vs = ui->Vcs->text().toFloat();
-        test_vector.Vg = ui->Vcg->text().toFloat()*(1 - ui->DeltaVg->text().toFloat()/200);
-        sweepList->append(test_vector);//Vg
+        test_vector.Va = Vca;
+        test_vector.Vs = Vcs * (1 - DeltaVs/200);
+        sweepList->append(test_vector); // Vs
 
-        test_vector.Vg = ui->Vcg->text().toFloat()*(1 + ui->DeltaVg->text().toFloat()/200);
-        sweepList->append(test_vector);//Vg
+        test_vector.Vs = Vcs * (1 + DeltaVs/200);
+        sweepList->append(test_vector); // Vs
 
-        //Emmission
+        test_vector.Vs = Vcs;
+        test_vector.Vg = Vcg * (1 - DeltaVg/200);
+        sweepList->append(test_vector); // Vg
+
+        test_vector.Vg = Vcg * (1 + DeltaVg/200);
+        sweepList->append(test_vector); // Vg
+
+        // Emmission
         test_vector.Va = ui->EmmVa->text().toFloat();
         test_vector.Vs = ui->EmmVs->text().toFloat();
         test_vector.Vg = ui->EmmVg->text().toFloat();
-        sweepList->append(test_vector); //Emmision Vector
+        sweepList->append(test_vector); // Emmision Vector
 
     }
     else
     {
         if (ui->checkVsEqVa->isChecked())
         {
-            //make vs==Va
+            // make vs==Va
             for (int g = 0; g <= VgSteps; g ++)
             {
                 test_vector.Vg = VgNow;
-                VaNow = ui->VaStart->text().toFloat();
+                VaNow = VaStart;
                 if (VgSteps>0) VgNow += (VgEnd - VgStart)/(float)VgSteps;
                 for (int a = 0; a <= VaSteps; a ++)
                 {
@@ -2743,16 +2752,16 @@ void MainWindow::CreateTestVectors()
         }
         else
         {
-            //if using the pentode models, do a triode connected sweep first (for parameter estimation)
-            //make vs==Va for a triode sweep
+            // if using the pentode models, do a triode connected sweep first (for parameter estimation)
+            // make vs==Va for a triode sweep
             if (ui->TubeType->currentText()!=NONE) { //skip if not modelling
-            VgNow = ui->VgStart->text().toFloat();
+            VgNow = VgStart;
             if (tubeData.Model==KOREN_P || tubeData.Model==DERK_P || tubeData.Model==DERK_B || tubeData.Model==DERKE_P || tubeData.Model==DERKE_B)
                 for (int g = 0; g <= VgSteps; g ++)
                 {
                     test_vector.Vg = VgNow;
                     if (VgSteps>=1) VgNow += (VgEnd - VgStart)/(float)VgSteps;
-                    VaNow = ui->VaStart->text().toFloat();
+                    VaNow = VaStart;
                     for (int a = 0; a <= VaSteps; a ++)
                     {
                         test_vector.Vs = test_vector.Va = VaNow;
@@ -2764,19 +2773,19 @@ void MainWindow::CreateTestVectors()
                     }
                 }
             }
-            //normal exhaustive sweep
-            VsNow = ui->VsStart->text().toFloat();
+            // normal exhaustive sweep
+            VsNow = VsStart;
             for (int s = 0; s <= VsSteps; s++)
             {
                 if (VsNow>400) VsNow=400;
                 test_vector.Vs = VsNow;
                 if (VgSteps>=1) VsNow += (VsEnd - VsStart)/(float)VsSteps;
-                VgNow = ui->VgStart->text().toFloat();
+                VgNow = VgStart;
                 for (int g = 0; g <= VgSteps; g++)
                 {
                     test_vector.Vg = VgNow;
                     if (VgSteps>=1) VgNow += (VgEnd - VgStart)/(float)VgSteps;
-                    VaNow = ui->VaStart->text().toFloat();
+                    VaNow = VaStart;
                     for (int a = 0; a <= VaSteps; a++)
                     {
                         if (VaNow>400) VaNow=400;
