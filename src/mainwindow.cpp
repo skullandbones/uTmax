@@ -1658,7 +1658,8 @@ void MainWindow::GetReal()
     //Iares=0;
     //Isres=0;
     adc_real.Vn = 5.0*(adc_scale.Vn *(adc_data.Vn/1023.0-1.0)+1.0) * calData.VnVal;
-    adc_real.Va = (float) adc_data.Va*5.0/1023.0 * adc_scale.Va * calData.VaVal -adc_real.Vsu + Vdi - Vdar + adc_real.Ia*Iares/1000.0;
+//    adc_real.Va = (float) adc_data.Va*5.0/1023.0 * adc_scale.Va * calData.VaVal -adc_real.Vsu + Vdi - Vdar + adc_real.Ia*Iares/1000.0;
+    adc_real.Va = VaNow;
     adc_real.Vs = (float) adc_data.Vs*5.0/1023.0 * adc_scale.Vs * calData.VsVal -adc_real.Vsu + Vdi - Vdar + adc_real.Is*Isres/1000.0;
     if (adc_real.Ia<0) adc_real.Ia=0;
     if (adc_real.Is<0) adc_real.Is=0;
