@@ -1,8 +1,8 @@
 #include "cal_dialog.h"
 #include "ui_cal_dialog.h"
 #include <QDebug>
-#define RANGE (0.2)
-#define STEPS (2000)
+#define RANGE (0.3)
+#define STEPS (3000)
 #define RealVal(value) (1+ (float)RANGE*(float)value/(float)(STEPS/2))
 
 Cal_Dialog::Cal_Dialog(MainWindow *parent) :
@@ -112,7 +112,7 @@ void Cal_Dialog::on_VsuSli_valueChanged(int value)
 
 void Cal_Dialog::on_Vg1Sli_valueChanged(int value)
 {
-    ui->Vg1Val->setText(QString::number(RealVal(value*2)));
+    ui->Vg1Val->setText(QString::number(RealVal(value)));
     mw->calData.Vg1Val=RealVal(value);
 }
 

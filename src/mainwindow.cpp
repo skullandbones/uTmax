@@ -124,7 +124,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->AutoPath->setText(QDir::homePath());
     QPixmap logo = QPixmap(":/uTracer.png");
     ui->Logo->setPixmap(logo);
-    this->setWindowTitle("uTmax 1.3a.1");
+    this->setWindowTitle("uTmax 1.3a.2-rc1");
 
     ClearLCDs();
 
@@ -615,7 +615,7 @@ void MainWindow::RxData()
     {
         qDebug() << "RxData: Action RxCode RXTIMEOUT";
         ui->statusBar->showMessage("No response from uTracer. Check cables and power cycle");
-        status = Idle;
+        status = CommsFail;
         StopTheMachine();
         return;
     }
@@ -625,7 +625,7 @@ void MainWindow::RxData()
     {
         qDebug() << "RxData: Action RxCode RXINVALID";
         ui->statusBar->showMessage("Unexpected response from uTracer; power cycle and restart");
-        status = Idle;
+        status = CommsFail;
         StopTheMachine();
         return;
     }
@@ -666,6 +666,14 @@ void MainWindow::RxData()
                     ui->CaptureProg->setValue(0);
                     status = HeatOff;
                     return;
+                }
+                case HeatOff:
+                case Discharge:
+                case CommsFail:
+                case WaitCommsGood:
+                {
+                    qDebug() << "RxData: stop is pending after state:" << status_name[status];
+                    break;
                 }
                 default:
                 {
@@ -1048,10 +1056,12 @@ void MainWindow::RxData()
         {
             if (RxCode != RXSUCCESS) break;
 
+            ui->HeaterProg->setValue(0);
+            SendEndMeasurementCommand(&CmdRsp);
+            status = Discharge;
+
             if (timeIt)
             {
-                ui->HeaterProg->setValue(0);
-                SendEndMeasurementCommand(&CmdRsp);
                 if (ui->checkAutoNumber->isChecked())
                 {
                     if (!ui->checkQuickTest->isChecked()) on_actionSave_plot_triggered();
@@ -1059,12 +1069,6 @@ void MainWindow::RxData()
                     int fn = ui->AutoNumber->text().toInt(&ok);
                     ui->AutoNumber->setText(QString::number(fn + 1));
                 }
-                status = Discharge;
-            }
-            else
-            {
-                ui->statusBar->showMessage("Ready");
-                status = Idle;
             }
             break;
         }
@@ -1082,6 +1086,26 @@ void MainWindow::RxData()
             else
             {
                 ui->statusBar->showMessage("Ready");
+                status = Idle;
+            }
+            break;
+        }
+        case CommsFail:
+        {
+            // Attempt to send the end measurement command to trigger discharge
+            SendEndMeasurementCommand(&CmdRsp);
+            status = WaitCommsGood;
+            break;
+        }
+        case WaitCommsGood:
+        {
+            qDebug() << "Waiting for good comms...";
+
+            if (RxCode == RXSUCCESS)
+            {
+                qDebug() << "Got good comms!";
+                ui->statusBar->showMessage("Communications now working");
+                interrupted.cmd = false;
                 status = Idle;
             }
             break;
@@ -1634,7 +1658,8 @@ void MainWindow::GetReal()
     //Iares=0;
     //Isres=0;
     adc_real.Vn = 5.0*(adc_scale.Vn *(adc_data.Vn/1023.0-1.0)+1.0) * calData.VnVal;
-    adc_real.Va = (float) adc_data.Va*5.0/1023.0 * adc_scale.Va * calData.VaVal -adc_real.Vsu + Vdi - Vdar + adc_real.Ia*Iares/1000.0;
+//    adc_real.Va = (float) adc_data.Va*5.0/1023.0 * adc_scale.Va * calData.VaVal -adc_real.Vsu + Vdi - Vdar + adc_real.Ia*Iares/1000.0;
+    adc_real.Va = VaNow;
     adc_real.Vs = (float) adc_data.Vs*5.0/1023.0 * adc_scale.Vs * calData.VsVal -adc_real.Vsu + Vdi - Vdar + adc_real.Is*Isres/1000.0;
     if (adc_real.Ia<0) adc_real.Ia=0;
     if (adc_real.Is<0) adc_real.Is=0;
@@ -2175,7 +2200,7 @@ bool MainWindow::SaveTubeDataFile() {
         QTextStream out(&datafile);
 
         out << "ID,A,G2,G1,G1b,Cathode,G3,Heater,Heater,Htr Volts,SPICE model,VaStart,VaEnd,VaStep,VsStart," <<
-               "VsEnd,VsStep,VgStart,VgEnd,VgStep,Vca,Dva,Vcg2,Dvg2,Vcg,Dvg,Power,EmmVa,EmmVs,EmmVg,gm1Typ,gm1Del,gm2Typ,gm1Del\n";
+               "VsEnd,VsStep,VgStart,VgEnd,VgStep,Vca,Dva,Vcg2,Dvg2,Vcg,Dvg,Power,EmmVa,EmmVs,EmmVg,gm1Typ,gm1Del,gm2Typ,gm2Del\n";
         for (int i=0; i< tubeDataList->length(); i++) {
             out << tubeDataList->at(i).ID << ","
                 << tubeDataList->at(i).Anode << ","
@@ -2656,57 +2681,66 @@ void MainWindow::CreateTestVectors()
     sweepList->clear();
     power = 0;
     tubeData.powerLim = ui->PowLim->text().toFloat();
-    VaNow = ui->VaStart->text().toFloat();
-    VsNow = ui->VsStart->text().toFloat();
-    VgNow = ui->VgStart->text().toFloat();
     VaStart = ui->VaStart->text().toFloat();
+    VaNow = VaStart;
     VsStart = ui->VsStart->text().toFloat();
+    VsNow = VsStart;
     VgStart = ui->VgStart->text().toFloat();
+    VgNow = VgStart;
     VaEnd = ui->VaEnd->text().toFloat();
     VsEnd = ui->VsEnd->text().toFloat();
     VgEnd = ui->VgEnd->text().toFloat();
+
     if (ui->checkQuickTest->isChecked()){
         if ((tubeData.Model==TRIODE) || (tubeData.Model==DUAL_TRIODE)) {
             ui->Vcs->setText( ui->Vca->text() );
         }
-        test_vector.Va = ui->Vca->text().toFloat()*(1 - ui->DeltaVa->text().toFloat()/200);
-        test_vector.Vs = ui->Vcs->text().toFloat();
-        test_vector.Vg = ui->Vcg->text().toFloat();
-        sweepList->append(test_vector);// Va
 
-        test_vector.Va = ui->Vca->text().toFloat()*(1 + ui->DeltaVa->text().toFloat()/200);
-        sweepList->append(test_vector); //Va
+        float Vca = ui->Vca->text().toFloat();
+        float Vcs = ui->Vcs->text().toFloat();
+        float Vcg = ui->Vcg->text().toFloat();
+        float DeltaVa = ui->DeltaVa->text().toFloat();
+        float DeltaVs = ui->DeltaVs->text().toFloat();
+        float DeltaVg = ui->DeltaVg->text().toFloat();
 
-        test_vector.Va = ui->Vca->text().toFloat();
-        test_vector.Vs = ui->Vcs->text().toFloat()*(1 - ui->DeltaVs->text().toFloat()/200);
-        sweepList->append(test_vector);//Vs
+        test_vector.Va = Vca * (1 - DeltaVa/200);
+        test_vector.Vs = Vcs;
+        test_vector.Vg = Vcg;
+        sweepList->append(test_vector); // Va
 
-        test_vector.Vs = ui->Vcs->text().toFloat()*(1 + ui->DeltaVs->text().toFloat()/200);
-        sweepList->append(test_vector);//Vs
+        test_vector.Va = Vca * (1 + DeltaVa/200);
+        sweepList->append(test_vector); // Va
 
-        test_vector.Vs = ui->Vcs->text().toFloat();
-        test_vector.Vg = ui->Vcg->text().toFloat()*(1 - ui->DeltaVg->text().toFloat()/200);
-        sweepList->append(test_vector);//Vg
+        test_vector.Va = Vca;
+        test_vector.Vs = Vcs * (1 - DeltaVs/200);
+        sweepList->append(test_vector); // Vs
 
-        test_vector.Vg = ui->Vcg->text().toFloat()*(1 + ui->DeltaVg->text().toFloat()/200);
-        sweepList->append(test_vector);//Vg
+        test_vector.Vs = Vcs * (1 + DeltaVs/200);
+        sweepList->append(test_vector); // Vs
 
-        //Emmission
+        test_vector.Vs = Vcs;
+        test_vector.Vg = Vcg * (1 - DeltaVg/200);
+        sweepList->append(test_vector); // Vg
+
+        test_vector.Vg = Vcg * (1 + DeltaVg/200);
+        sweepList->append(test_vector); // Vg
+
+        // Emmission
         test_vector.Va = ui->EmmVa->text().toFloat();
         test_vector.Vs = ui->EmmVs->text().toFloat();
         test_vector.Vg = ui->EmmVg->text().toFloat();
-        sweepList->append(test_vector); //Emmision Vector
+        sweepList->append(test_vector); // Emmision Vector
 
     }
     else
     {
         if (ui->checkVsEqVa->isChecked())
         {
-            //make vs==Va
+            // make vs==Va
             for (int g = 0; g <= VgSteps; g ++)
             {
                 test_vector.Vg = VgNow;
-                VaNow = ui->VaStart->text().toFloat();
+                VaNow = VaStart;
                 if (VgSteps>0) VgNow += (VgEnd - VgStart)/(float)VgSteps;
                 for (int a = 0; a <= VaSteps; a ++)
                 {
@@ -2719,16 +2753,16 @@ void MainWindow::CreateTestVectors()
         }
         else
         {
-            //if using the pentode models, do a triode connected sweep first (for parameter estimation)
-            //make vs==Va for a triode sweep
+            // if using the pentode models, do a triode connected sweep first (for parameter estimation)
+            // make vs==Va for a triode sweep
             if (ui->TubeType->currentText()!=NONE) { //skip if not modelling
-            VgNow = ui->VgStart->text().toFloat();
+            VgNow = VgStart;
             if (tubeData.Model==KOREN_P || tubeData.Model==DERK_P || tubeData.Model==DERK_B || tubeData.Model==DERKE_P || tubeData.Model==DERKE_B)
                 for (int g = 0; g <= VgSteps; g ++)
                 {
                     test_vector.Vg = VgNow;
                     if (VgSteps>=1) VgNow += (VgEnd - VgStart)/(float)VgSteps;
-                    VaNow = ui->VaStart->text().toFloat();
+                    VaNow = VaStart;
                     for (int a = 0; a <= VaSteps; a ++)
                     {
                         test_vector.Vs = test_vector.Va = VaNow;
@@ -2740,19 +2774,19 @@ void MainWindow::CreateTestVectors()
                     }
                 }
             }
-            //normal exhaustive sweep
-            VsNow = ui->VsStart->text().toFloat();
+            // normal exhaustive sweep
+            VsNow = VsStart;
             for (int s = 0; s <= VsSteps; s++)
             {
                 if (VsNow>400) VsNow=400;
                 test_vector.Vs = VsNow;
                 if (VgSteps>=1) VsNow += (VsEnd - VsStart)/(float)VsSteps;
-                VgNow = ui->VgStart->text().toFloat();
+                VgNow = VgStart;
                 for (int g = 0; g <= VgSteps; g++)
                 {
                     test_vector.Vg = VgNow;
                     if (VgSteps>=1) VgNow += (VgEnd - VgStart)/(float)VgSteps;
-                    VaNow = ui->VaStart->text().toFloat();
+                    VaNow = VaStart;
                     for (int a = 0; a <= VaSteps; a++)
                     {
                         if (VaNow>400) VaNow=400;

@@ -573,7 +573,7 @@ void PlotTabWidget::UpdateTitle(QString tube) {
     if (x1cb->currentText()=="Vg") line.append("/Vg1");*/
     //plotArea->setTitle(line);
     if (title == 0) {
-        title = new QCPPlotTitle(plotArea, line);
+        title = new QCPTextElement(plotArea, line);
         plotArea->plotLayout()->insertRow(0);
         plotArea->plotLayout()->addElement(0, 0, title);
     }
