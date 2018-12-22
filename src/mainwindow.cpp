@@ -2036,8 +2036,6 @@ bool MainWindow::ReadDataFile()
 }
 
 void MainWindow::LabelPins(tubeData_t tubeData) {
-    bool ok;
-
     ui->AnodePin->setText(tubeData.Anode );
     ui->G2Pin->setText(tubeData.G2);
     ui->G1Pin->setText(tubeData.G1 );
