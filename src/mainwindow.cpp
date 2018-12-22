@@ -1899,7 +1899,7 @@ bool MainWindow::ReadDataFile()
     if (! datafile.exists(dataFileName)) {
         //It doesn't exist so ask for it
         dataFileName = QString();
-        dataFileName = QFileDialog::getOpenFileName(this,tr("Read Tube Data file"),QDir::homePath(),"Text (*.csv)");
+        dataFileName = QFileDialog::getOpenFileName(this,tr("Please select your Vacuum Tube Data file"),QDir::homePath(),"Text (*.csv)");
     }
     if (dataFileName.isNull()) {
         qWarning() << "WARNING: Valve database .csv file not specified";
