@@ -248,7 +248,9 @@ bool MainWindow::CloseComPort()
         portInUse->close();
         delete portInUse;
         portInUse = NULL;
+        return(true);
     }
+    return(false);
 }
 
 void MainWindow::RequestOperation(Operation_t ReqOperation)
