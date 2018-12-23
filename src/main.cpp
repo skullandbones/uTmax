@@ -49,7 +49,8 @@ int main(int argc, char *argv[])
     QDir dir(w.uTmaxDir);
     if(!dir.exists())
     {
-        qCritical() << "ERROR: Home directory does not exist:" << w.uTmaxDir;
+        std::fprintf(stderr, "ERROR: uTmax home directory does not exist: %s, please create this directory to hold your "
+                             "calibration file.\n", qPrintable(w.uTmaxDir));
         return(EXIT_FAILURE);
     }
 

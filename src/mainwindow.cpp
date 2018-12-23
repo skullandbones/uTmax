@@ -248,7 +248,9 @@ bool MainWindow::CloseComPort()
         portInUse->close();
         delete portInUse;
         portInUse = NULL;
+        return(true);
     }
+    return(false);
 }
 
 void MainWindow::RequestOperation(Operation_t ReqOperation)
@@ -1897,7 +1899,7 @@ bool MainWindow::ReadDataFile()
     if (! datafile.exists(dataFileName)) {
         //It doesn't exist so ask for it
         dataFileName = QString();
-        dataFileName = QFileDialog::getOpenFileName(this,tr("Read Tube Data file"),QDir::homePath(),"Text (*.csv)");
+        dataFileName = QFileDialog::getOpenFileName(this,tr("Please select your Vacuum Tube Data file"),QDir::homePath(),"Text (*.csv)");
     }
     if (dataFileName.isNull()) {
         qWarning() << "WARNING: Valve database .csv file not specified";
@@ -2034,8 +2036,6 @@ bool MainWindow::ReadDataFile()
 }
 
 void MainWindow::LabelPins(tubeData_t tubeData) {
-    bool ok;
-
     ui->AnodePin->setText(tubeData.Anode );
     ui->G2Pin->setText(tubeData.G2);
     ui->G1Pin->setText(tubeData.G1 );
