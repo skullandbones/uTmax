@@ -1,0 +1,118 @@
+How to build uTmax 1.3a.2
+=========================
+
+These instructions are for Linux based systems. Tested on Fedora 29 KDE and
+Mageia 6.
+
+The date of these instructions is 23rd December 2018.
+Author: Dean Jenkins <skullandbones99@gmail.com>
+
+
+Build environment
+=================
+
+
+Overview
+--------
+
+Fedora 29 KDE Plasma (Linux 4.19.9 kernel)
+Qt 5.10.0 (other open source Qt 5 versions may also be OK)
+
+uTmax 1.3a.2 can be built using the Qt Creator environment or via the command
+line using qmake and make.
+
+Ensure your host has the following development tools installed:
+
+OS distrobution packages:
+gcc
+gcc-c++ (C++ for gcc) (also called g++)
+gdb
+make
+OpenGL (development package)
+
+Qt tools available in the open source download package:
+qmake
+qtcreator (GUI IDE application)
+
+
+Installing Qt 5.10.0 
+--------------------
+
+uTmax 1.3a.2 builds against Qt 5.10.0 (other Qt versions may work).
+
+Seems Qt 5 might not be available in Linux distribution repositories due to
+licensing issues.
+
+Use the chrome browser to download qt-opensource-linux-x64-5.10.0.run [1GB] from
+http://download.qt.io/archive/qt/5.10/5.10.0/qt-opensource-linux-x64-5.10.0.run
+
+Make the downloaded binary executable by doing
+chmod +x qt-opensource-linux-x64-5.10.0.run
+
+as a normal user, run the binary file to install QT into $HOME/Qt5.10.0
+Note a Qt account is not needed so press "skip" to obtain the Open Source Qt
+implementation. In the install section do "select all" go get the tools and Qt
+binaries and source code.
+
+Edit ~/.bash_profile and add the following so that qmake can be found
+PATH=$PATH:$HOME/Qt5.10.0/5.10.0/gcc_64/bin
+(logout and login again for the change to take effect)
+
+
+Installing OpenGL
+-----------------
+
+OpenGL development source code are needed to resolve the build error:
+../../../Qt5.10.0/5.10.0/gcc_64/include/QtGui/qopengl.h:141:13: fatal error: GL/gl.h: No such file or directory
+
+(Fedora command line)
+sudo yum install mesa-libGL-devel
+
+
+uTmax build instructions using qtcreator (GUI application)
+----------------------------------------------------------
+
+Edit ~/.bash_profile and add the following so that qtcreator can be found
+PATH=$PATH:$HOME/Qt5.10.0/Tools/QtCreator/bin
+(logout and login again for the change to take effect)
+
+run qtcreator and open the uTmax project in uTmax/src/uTmax.pro
+This will create a uTmax project will some "kits". Ensure that release and debug
+image settings are selected.
+
+If the C and/or C++ compilers are not set then goto
+"Projects" --> "Manage kits" --> "Kits" --> "auto-detected" -->
+"Default Desktop Qt 5.10.0 GCC 64bit"
+and select the paths to the C and C++ compilers.
+
+qtcreator can build either a release image or a debug image of uTmax.
+In "Projects" --> "Build & Run" --> "Build" --> "Build Settings" ensure both
+"debug" and "release" configurations are set. If missing then use "add" to add
+the configuration, set "shadow build" to ensure both images store the object
+files in different directories.
+
+The "debug" image provides a running commentary of debug information. This can
+be useful to observing reports of run-time errors.
+
+
+uTmax command line build instructions
+-------------------------------------
+
+cd into the uTmax src directory and run
+qmake CONFIG+=debug (creates a Makefile for the debug uTmax image)
+or
+qmake CONFIG+=release (creates a Makefile for the release uTmax image)
+
+make (performs the build of uTmax)
+
+The uTmax release image binary appears in the uTmax/src/release directory.
+The uTmax debug image binary appears in the uTmax/src/debug directory.
+
+Run uTmax by using
+./uTmax
+
+Also this commands are useful:
+make clean (used to remove build files such as object files)
+make distclean (used to remove build files such as object files and uTmax binary)
+
+
