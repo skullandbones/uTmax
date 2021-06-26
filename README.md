@@ -18,13 +18,12 @@ Latest stable release on master branch: v1.3a.2 released in Dec 2018.
 Tested with Linux open source Qt version 5.10.0. (other Qt 5 versions maybe OK)
 Tested on Fedora 29 and Mageia 6 Linux operating systems.
 
-Active development branches:
-uTmax_1.3a_dev
-
-Dean's Release branches:
+Dean's Releases:
 uTmax_1.3a.2 also tagged as v1.3a.2 (baseline is 1.3a)
 uTmax_1.3a.1 also tagged as v1.3a.1 (baseline is 1.3a)
 uTmax_1.0e.1 also tagged as v1.0e.1 (baseline is 1.0e)
+
+For building instructions see Docs/How_to_build_uTmax_1.3a.2.txt
 ```
 
 Nick Barton's original 1.3a GPLv3 released source code is available from
