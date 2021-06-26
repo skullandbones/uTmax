@@ -1,10 +1,11 @@
 How to build uTmax 1.3a.2
 =========================
 
-These instructions are for Linux based systems. Tested on Fedora 29 KDE and
-Mageia 6.
+These instructions are for Linux based systems. Tested on Fedora 29 KDE,
+Mageia 6 and Raspbery Pi 4.
 
-The date of these instructions is 23rd December 2018.
+The original date of these instructions was 23rd December 2018.
+Updated 26th June 2021 for the Raspberry Pi 4.
 Author: Dean Jenkins <skullandbones99@gmail.com>
 
 
@@ -15,15 +16,19 @@ Build environment
 Overview
 --------
 
+
 Fedora 29 KDE Plasma (Linux 4.19.9 kernel)
 Qt 5.10.0 (other open source Qt 5 versions may also be OK)
+
+Raspberry 4 using Raspberry Pi OS 64-bit Buster (Linux 5.10.17-v8+ kernel)
+Qt 5.11.3
 
 uTmax 1.3a.2 can be built using the Qt Creator environment or via the command
 line using qmake and make.
 
 Ensure your host has the following development tools installed:
 
-OS distrobution packages:
+OS distribution packages:
 gcc
 gcc-c++ (C++ for gcc) (also called g++)
 gdb
@@ -35,9 +40,10 @@ qmake
 qtcreator (GUI IDE application)
 
 
-Installing Qt 5.10.0 
---------------------
+Manually Installing Qt 5.10.0 
+-----------------------------
 
+Tested on Fedora 29 and Mageia 6:
 uTmax 1.3a.2 builds against Qt 5.10.0 (other Qt versions may work).
 
 Seems Qt 5 might not be available in Linux distribution repositories due to
@@ -45,6 +51,7 @@ licensing issues.
 
 Use the chrome browser to download qt-opensource-linux-x64-5.10.0.run [1GB] from
 http://download.qt.io/archive/qt/5.10/5.10.0/qt-opensource-linux-x64-5.10.0.run
+(Note that this link no longer works)
 
 Make the downloaded binary executable by doing
 chmod +x qt-opensource-linux-x64-5.10.0.run
@@ -68,6 +75,24 @@ OpenGL development source code are needed to resolve the build error:
 (Fedora command line)
 sudo yum install mesa-libGL-devel
 
+
+Raspberry Pi 4 Installation of qt5
+----------------------------------
+
+These instructions were tested on Raspberry OS 64-bit Buster.
+
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get install qt5-default
+sudo apt-get install qtcreator
+sudo apt-get install qtdeclarative5-dev
+sudo apt-get install libqt5serialport5
+sudo apt-get install libqt5serialport5-dev
+
+Edit /etc/xdg/qt5ct/qt5ct.conf as superuser
+to change gtk2 to gtk3 (not sure that this is necessary)
+
+qt 5.11.3 was used on the Raspberry Pi 4.
 
 uTmax build instructions using qtcreator (GUI application)
 ----------------------------------------------------------
