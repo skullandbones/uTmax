@@ -6,6 +6,7 @@ Mageia 6 and Raspbery Pi 4.
 
 The original date of these instructions was 23rd December 2018.
 Updated 26th June 2021 for the Raspberry Pi 4.
+Updated 10th October 2024 for the Raspberry Pi 4.
 Author: Dean Jenkins <skullandbones99@gmail.com>
 
 
@@ -93,6 +94,17 @@ Edit /etc/xdg/qt5ct/qt5ct.conf as superuser
 to change gtk2 to gtk3 (not sure that this is necessary)
 
 qt 5.11.3 was used on the Raspberry Pi 4.
+
+These instructions were tested on Raspberry OS 64-bit Bookworm.
+
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt install qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools
+sudo apt-get install qtcreator
+sudo apt-get install qtdeclarative5-dev
+sudo apt-get install libqt5serialport5-dev
+
+
 
 uTmax build instructions using qtcreator (GUI application)
 ----------------------------------------------------------
